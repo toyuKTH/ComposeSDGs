@@ -1,0 +1,162 @@
+/* SDG信息卡片样式 */
+.sdg-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  z-index: 1000;
+  overflow: hidden;
+  font-family: 'Segoe UI', sans-serif;
+  transition: all 0.3s ease;
+}
+
+/* 隐藏类 */
+.hidden {
+  display: none;
+}
+
+/* 卡片头部样式 */
+.card-header {
+  position: relative;
+  padding: 15px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+  white-space: nowrap; /* 防止文本换行 */
+  height: 30px;
+}
+
+/* 关闭按钮样式 */
+
+.close-btn {
+  position: absolute;
+  right: 12px;
+  top: 4px;
+  font-size: 24px;
+  color: #888;
+  cursor: pointer;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+/* 卡片内容区域样式 */
+.card-content {
+  padding: 15px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* SDG项目容器 */
+#sdg-items-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 单个SDG项目样式 */
+.sdg-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-radius: 8px;
+  transition: transform 0.2s;
+  line-height: 24px; 
+  gap: 30px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.sdg-item:hover {
+  transform: translateX(5px);
+ 
+}
+
+/* SDG图标样式 */
+.sdg-icon-small {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 12px;
+  object-fit: contain;
+}
+
+/* SDG信息样式 */
+.sdg-info {
+  flex: 1;
+}
+
+/* SDG标题样式 */
+.sdg-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+/* SDG数值样式 */
+.sdg-value {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+/* 卡片底部样式 */
+.card-footer {
+  display: flex;
+  justify-content: space-evenly;
+  padding: 15px;
+  background-color: #f5f5f5;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* 播放按钮样式 */
+.play-btn {
+  padding: 8px 16px;
+  background-color: #6eab84;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  height: 45px;
+  width: 90px;
+}
+
+.play-btn:hover {
+  background-color: #45a049;
+  /* hover效果，向上浮动一点点 */
+  transform: translateY(-2px); 
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.play-btn:active {
+  background-color: #3d8b40;
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* 根据SDG设置不同的颜色（这部分会在JavaScript中动态设置） */
+.sdg-color-1 { color: #e5243b; }
+.sdg-color-2 { color: #DDA63A; }
+.sdg-color-3 { color: #4C9F38; }
+/* ... 其他SDG颜色 ... */
+
+/* 添加响应式设计 */
+@media (max-width: 768px) {
+  .sdg-card {
+    width: 90%;
+    max-width: 300px;
+  }
+  
+  .play-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
