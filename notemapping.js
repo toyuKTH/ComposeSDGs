@@ -144,6 +144,64 @@ export function isHarmonic(value1, value2) {
   return harmonicIntervals.includes(interval);
 }
 
+// ========== 🎵 5个SDG的音色配置 ==========
+
+/**
+ * SDG 音色映射表
+ * SDG 1 (无贫穷): 温暖的钢琴音色
+ * SDG 3 (良好健康): 明亮的木琴音色
+ * SDG 7 (清洁能源): 科技感的合成音色
+ * SDG 13 (气候行动): 空灵的长笛音色
+ * SDG 16 (和平正义): 庄重的弦乐音色
+ */
+const SDG_TIMBRES = {
+  '1': {
+    name: '钢琴 (Piano)',
+    oscillatorType: 'triangle',
+    attack: 0.01,
+    decay: 0.1,
+    sustain: 0.7,
+    release: 0.3,
+    harmonics: [1, 0.3, 0.1]  // 基频 + 泛音
+  },
+  '3': {
+    name: '木琴 (Xylophone)',
+    oscillatorType: 'sine',
+    attack: 0.001,
+    decay: 0.05,
+    sustain: 0.3,
+    release: 0.1,
+    harmonics: [1, 0.5, 0.2, 0.1]
+  },
+  '7': {
+    name: '合成器 (Synth)',
+    oscillatorType: 'sawtooth',
+    attack: 0.05,
+    decay: 0.1,
+    sustain: 0.6,
+    release: 0.2,
+    harmonics: [1, 0.4, 0.3]
+  },
+  '13': {
+    name: '长笛 (Flute)',
+    oscillatorType: 'sine',
+    attack: 0.08,
+    decay: 0.05,
+    sustain: 0.8,
+    release: 0.2,
+    harmonics: [1, 0.2, 0.05]
+  },
+  '16': {
+    name: '弦乐 (Strings)',
+    oscillatorType: 'sawtooth',
+    attack: 0.15,
+    decay: 0.1,
+    sustain: 0.9,
+    release: 0.4,
+    harmonics: [1, 0.6, 0.4, 0.2]
+  }
+};
+
 // ========== 音频播放支持 (Web Audio API) ==========
 
 let audioContext = null;
@@ -159,64 +217,93 @@ function getAudioContext() {
 }
 
 /**
- * 播放单个音符
+ * 播放单个音符（带音色）
  * @param {number} frequency - 频率 (Hz)
  * @param {number} duration - 持续时间（秒）
  * @param {number} volume - 音量 (0-1)
+ * @param {string} sdg - SDG编号 ('1', '3', '7', '13', '16')
  */
-export function playNote(frequency, duration = 0.5, volume = 0.3) {
+export function playNote(frequency, duration = 0.5, volume = 0.3, sdg = '1') {
   const ctx = getAudioContext();
-  const oscillator = ctx.createOscillator();
-  const gainNode = ctx.createGain();
+  const timbre = SDG_TIMBRES[sdg] || SDG_TIMBRES['1'];
   
-  oscillator.type = 'sine'; // 音色：sine, square, sawtooth, triangle
-  oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
+  // 创建增益节点
+  const masterGain = ctx.createGain();
+  masterGain.connect(ctx.destination);
   
-  // 音量包络（ADSR）
-  gainNode.gain.setValueAtTime(0, ctx.currentTime);
-  gainNode.gain.linearRampToValueAtTime(volume, ctx.currentTime + 0.01); // Attack
-  gainNode.gain.exponentialRampToValueAtTime(volume * 0.7, ctx.currentTime + 0.1); // Decay
-  gainNode.gain.setValueAtTime(volume * 0.7, ctx.currentTime + duration - 0.1); // Sustain
-  gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration); // Release
-  
-  oscillator.connect(gainNode);
-  gainNode.connect(ctx.destination);
-  
-  oscillator.start(ctx.currentTime);
-  oscillator.stop(ctx.currentTime + duration);
-}
-
-/**
- * 播放和弦（多个音符同时）
- * @param {Array} frequencies - 频率数组
- * @param {number} duration - 持续时间（秒）
- * @param {number} volume - 音量 (0-1)
- */
-export function playChord(frequencies, duration = 0.5, volume = 0.3) {
-  // 降低单个音符音量以避免削波
-  const noteVolume = volume / Math.sqrt(frequencies.length);
-  
-  frequencies.forEach(freq => {
-    playNote(freq, duration, noteVolume);
+  // 根据音色配置创建多个振荡器（泛音）
+  timbre.harmonics.forEach((harmonicVolume, index) => {
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    // 设置振荡器类型和频率
+    oscillator.type = timbre.oscillatorType;
+    oscillator.frequency.setValueAtTime(frequency * (index + 1), ctx.currentTime);
+    
+    // ADSR 包络
+    const attackTime = timbre.attack;
+    const decayTime = timbre.decay;
+    const sustainLevel = timbre.sustain * volume * harmonicVolume;
+    const releaseTime = timbre.release;
+    
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(volume * harmonicVolume, ctx.currentTime + attackTime); // Attack
+    gainNode.gain.exponentialRampToValueAtTime(Math.max(sustainLevel, 0.01), ctx.currentTime + attackTime + decayTime); // Decay
+    gainNode.gain.setValueAtTime(sustainLevel, ctx.currentTime + duration - releaseTime); // Sustain
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration); // Release
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(masterGain);
+    
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + duration);
   });
 }
 
 /**
- * 根据值播放音符
- * @param {number} value - SDG 分数
+ * 播放和弦（多个音符同时，可以有不同音色）
+ * @param {Array} noteData - 音符数据数组 [{frequency, sdg}, ...]
  * @param {number} duration - 持续时间（秒）
+ * @param {number} volume - 音量 (0-1)
  */
-export function playValueNote(value, duration = 0.5) {
-  const note = valueToNote(value);
-  playNote(note.frequency, duration);
+export function playChord(noteData, duration = 0.5, volume = 0.3) {
+  // 降低单个音符音量以避免削波
+  const noteVolume = volume / Math.sqrt(noteData.length);
+  
+  noteData.forEach(note => {
+    playNote(note.frequency, duration, noteVolume, note.sdg);
+  });
 }
 
 /**
- * 播放多个值组成的和弦
- * @param {Array} values - SDG 分数数组
+ * 根据值和SDG播放音符
+ * @param {number} value - SDG 分数
+ * @param {string} sdg - SDG编号
  * @param {number} duration - 持续时间（秒）
  */
-export function playValueChord(values, duration = 0.5) {
-  const frequencies = values.map(v => valueToNote(v).frequency);
-  playChord(frequencies, duration);
+export function playValueNote(value, sdg = '1', duration = 0.5) {
+  const note = valueToNote(value);
+  playNote(note.frequency, duration, 0.3, sdg);
+}
+
+/**
+ * 播放多个值组成的和弦（带SDG信息）
+ * @param {Array} notesData - 音符数据 [{value, sdg}, ...]
+ * @param {number} duration - 持续时间（秒）
+ */
+export function playValueChord(notesData, duration = 0.5) {
+  const chordData = notesData.map(note => ({
+    frequency: valueToNote(note.value).frequency,
+    sdg: note.sdg
+  }));
+  playChord(chordData, duration);
+}
+
+/**
+ * 获取 SDG 的音色名称
+ * @param {string} sdg - SDG编号
+ * @returns {string} - 音色名称
+ */
+export function getTimbreName(sdg) {
+  return SDG_TIMBRES[sdg]?.name || '钢琴';
 }

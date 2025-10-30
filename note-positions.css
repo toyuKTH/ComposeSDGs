@@ -139,7 +139,8 @@
 
 /* ========== 国家标签 ========== */
 .note-label {
-  top: 110px !important;
+  top: 10px !important;
+  left: -5px;
   bottom: auto !important;
   position: absolute !important;
 }
@@ -158,6 +159,7 @@
 .chord .chord-note .note-stem {
   height: 50px !important;
   top: 6px !important;
+  display: block !important;
 }
 
 /* 只显示第一个音符的符杆 */
@@ -166,10 +168,11 @@
 }
 
 .chord .chord-note:not(:first-child) .note-stem {
-  display: none !important;
+  /* display: none !important; */
 }
 
 /* ========== 符头 ========== */
 .note-head {
   position: relative !important;
+  background-color: currentColor !important;
 }
