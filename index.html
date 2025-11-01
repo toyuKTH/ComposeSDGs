@@ -13,6 +13,7 @@
   <!-- 样式 -->
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="note-positions.css">
+  <link rel="stylesheet" href="sdgindicatortooltip.css">
 </head>
 
 <body>
@@ -40,7 +41,7 @@
     <aside id="left-panel">
       <h2>SDG Selection</h2>
       <div id="sdg_checkbox_list"></div>
-      
+
       <!-- Start Compose 按钮 -->
       <button id="start-compose-btn" class="compose-toggle-btn">Start Compose</button>
     </aside>
@@ -55,9 +56,14 @@
   <footer id="composer-area" class="hidden">
     <div id="top-area">
       <button id="play-melody">▶ Play</button>
-      <button id="shuffle-notes">🔀 Shuffle</button>
-      <button id="clear-all">🗑 Clear All</button>
-      <button id="close-compose-btn" class="close-compose-btn">✕ Close</button>
+      <button id="shuffle-notes"> Shuffle</button>
+      <button id="clear-all">Clear All</button>
+      <label class="tempo-label">Tempo</label>
+      <input id="tempo-input" type="number" min="40" max="240" value="86" class="tempo-input">
+      <span class="tempo-unit">BPM</span>
+
+
+      <button id="close-compose-btn" class="close-compose-btn"> ✕ </button>
     </div>
 
     <div class="staff-group">
@@ -69,7 +75,7 @@
         <div class="staff-line line-3"></div>
         <div class="staff-line line-4"></div>
         <div class="staff-line line-5"></div>
-        
+
         <!-- 高音谱号 -->
         <div class="treble_clef">𝄞</div>
 

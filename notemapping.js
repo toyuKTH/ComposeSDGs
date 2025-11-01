@@ -144,15 +144,28 @@ export function isHarmonic(value1, value2) {
   return harmonicIntervals.includes(interval);
 }
 
-// ========== 🎵 5个SDG的音色配置 ==========
+// ========== 🎵 17个SDG的完整音色配置 ==========
 
 /**
- * SDG 音色映射表
- * SDG 1 (无贫穷): 温暖的钢琴音色
- * SDG 3 (良好健康): 明亮的木琴音色
- * SDG 7 (清洁能源): 科技感的合成音色
- * SDG 13 (气候行动): 空灵的长笛音色
- * SDG 16 (和平正义): 庄重的弦乐音色
+ * SDG 音色映射表 (完整版 - 所有17个SDG)
+ * 
+ * SDG 1  (无贫穷): 温暖的钢琴音色 - 代表温暖与希望
+ * SDG 2  (零饥饿): 饱满的大提琴音色 - 代表丰盛与滋养
+ * SDG 3  (良好健康): 明亮的木琴音色 - 代表活力与生机
+ * SDG 4  (优质教育): 清晰的钟琴音色 - 代表智慧与启发
+ * SDG 5  (性别平等): 和谐的竖琴音色 - 代表平衡与优雅
+ * SDG 6  (清洁饮水): 流动的马林巴音色 - 代表水的流动性
+ * SDG 7  (清洁能源): 科技感的合成音色 - 代表现代与创新
+ * SDG 8  (体面工作): 稳定的管风琴音色 - 代表坚实与发展
+ * SDG 9  (产业创新): 电子合成器音色 - 代表科技与进步
+ * SDG 10 (减少不平等): 融合的混合音色 - 代表包容与多元
+ * SDG 11 (可持续城市): 都市铜管音色 - 代表城市活力
+ * SDG 12 (负责任消费): 节制的古筝音色 - 代表平衡消费
+ * SDG 13 (气候行动): 空灵的长笛音色 - 代表大气与环境
+ * SDG 14 (水下生物): 波浪般的振音器 - 代表海洋的波动
+ * SDG 15 (陆地生物): 自然的木管音色 - 代表森林与大地
+ * SDG 16 (和平正义): 庄重的弦乐音色 - 代表公正与稳定
+ * SDG 17 (伙伴关系): 丰富的交响音色 - 代表合作与融合
  */
 const SDG_TIMBRES = {
   '1': {
@@ -162,7 +175,18 @@ const SDG_TIMBRES = {
     decay: 0.1,
     sustain: 0.7,
     release: 0.3,
-    harmonics: [1, 0.3, 0.1]  // 基频 + 泛音
+    harmonics: [1, 0.3, 0.1],
+    description: '温暖的钢琴 - 希望与温暖'
+  },
+  '2': {
+    name: '大提琴 (Cello)',
+    oscillatorType: 'sawtooth',
+    attack: 0.08,
+    decay: 0.15,
+    sustain: 0.85,
+    release: 0.4,
+    harmonics: [1, 0.5, 0.3, 0.15],
+    description: '饱满的大提琴 - 丰盛与滋养'
   },
   '3': {
     name: '木琴 (Xylophone)',
@@ -171,7 +195,38 @@ const SDG_TIMBRES = {
     decay: 0.05,
     sustain: 0.3,
     release: 0.1,
-    harmonics: [1, 0.5, 0.2, 0.1]
+    harmonics: [1, 0.5, 0.2, 0.1],
+    description: '明亮的木琴 - 活力与健康'
+  },
+  '4': {
+    name: '钟琴 (Glockenspiel)',
+    oscillatorType: 'sine',
+    attack: 0.002,
+    decay: 0.08,
+    sustain: 0.4,
+    release: 0.15,
+    harmonics: [1, 0.6, 0.3, 0.2, 0.1],
+    description: '清晰的钟琴 - 智慧与启发'
+  },
+  '5': {
+    name: '竖琴 (Harp)',
+    oscillatorType: 'triangle',
+    attack: 0.005,
+    decay: 0.2,
+    sustain: 0.5,
+    release: 0.25,
+    harmonics: [1, 0.4, 0.2, 0.05],
+    description: '优雅的竖琴 - 平衡与和谐'
+  },
+  '6': {
+    name: '马林巴 (Marimba)',
+    oscillatorType: 'sine',
+    attack: 0.003,
+    decay: 0.1,
+    sustain: 0.4,
+    release: 0.2,
+    harmonics: [1, 0.45, 0.25, 0.1],
+    description: '流动的马林巴 - 水的灵动'
   },
   '7': {
     name: '合成器 (Synth)',
@@ -180,7 +235,58 @@ const SDG_TIMBRES = {
     decay: 0.1,
     sustain: 0.6,
     release: 0.2,
-    harmonics: [1, 0.4, 0.3]
+    harmonics: [1, 0.4, 0.3],
+    description: '科技合成器 - 能源与创新'
+  },
+  '8': {
+    name: '管风琴 (Organ)',
+    oscillatorType: 'square',
+    attack: 0.02,
+    decay: 0.05,
+    sustain: 0.9,
+    release: 0.3,
+    harmonics: [1, 0.7, 0.5, 0.3],
+    description: '稳固的管风琴 - 工作与增长'
+  },
+  '9': {
+    name: '电子合成器 (Electronic Synth)',
+    oscillatorType: 'square',
+    attack: 0.03,
+    decay: 0.08,
+    sustain: 0.65,
+    release: 0.25,
+    harmonics: [1, 0.5, 0.4, 0.2],
+    description: '现代电子音 - 创新与基建'
+  },
+  '10': {
+    name: '混合音色 (Blended)',
+    oscillatorType: 'triangle',
+    attack: 0.04,
+    decay: 0.12,
+    sustain: 0.75,
+    release: 0.3,
+    harmonics: [1, 0.45, 0.35, 0.2, 0.1],
+    description: '融合音色 - 包容与平等'
+  },
+  '11': {
+    name: '铜管 (Brass)',
+    oscillatorType: 'sawtooth',
+    attack: 0.06,
+    decay: 0.08,
+    sustain: 0.8,
+    release: 0.2,
+    harmonics: [1, 0.6, 0.4, 0.25],
+    description: '明亮铜管 - 城市活力'
+  },
+  '12': {
+    name: '古筝 (Guzheng)',
+    oscillatorType: 'triangle',
+    attack: 0.01,
+    decay: 0.15,
+    sustain: 0.55,
+    release: 0.35,
+    harmonics: [1, 0.35, 0.15, 0.08],
+    description: '节制古筝 - 负责任消费'
   },
   '13': {
     name: '长笛 (Flute)',
@@ -189,7 +295,28 @@ const SDG_TIMBRES = {
     decay: 0.05,
     sustain: 0.8,
     release: 0.2,
-    harmonics: [1, 0.2, 0.05]
+    harmonics: [1, 0.2, 0.05],
+    description: '空灵长笛 - 气候与大气'
+  },
+  '14': {
+    name: '振音器 (Vibraphone)',
+    oscillatorType: 'sine',
+    attack: 0.004,
+    decay: 0.12,
+    sustain: 0.5,
+    release: 0.3,
+    harmonics: [1, 0.55, 0.3, 0.15, 0.05],
+    description: '波动振音 - 海洋生态'
+  },
+  '15': {
+    name: '木管 (Woodwind)',
+    oscillatorType: 'triangle',
+    attack: 0.06,
+    decay: 0.1,
+    sustain: 0.75,
+    release: 0.25,
+    harmonics: [1, 0.4, 0.25, 0.1],
+    description: '自然木管 - 陆地生态'
   },
   '16': {
     name: '弦乐 (Strings)',
@@ -198,7 +325,18 @@ const SDG_TIMBRES = {
     decay: 0.1,
     sustain: 0.9,
     release: 0.4,
-    harmonics: [1, 0.6, 0.4, 0.2]
+    harmonics: [1, 0.6, 0.4, 0.2],
+    description: '庄重弦乐 - 和平正义'
+  },
+  '17': {
+    name: '交响乐 (Orchestra)',
+    oscillatorType: 'sawtooth',
+    attack: 0.1,
+    decay: 0.12,
+    sustain: 0.85,
+    release: 0.35,
+    harmonics: [1, 0.5, 0.4, 0.3, 0.15],
+    description: '交响合奏 - 全球伙伴'
   }
 };
 
@@ -212,8 +350,33 @@ let audioContext = null;
 function getAudioContext() {
   if (!audioContext) {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // 确保音频上下文已启动
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
   }
   return audioContext;
+}
+
+/**
+ * 预热音频上下文（在第一次播放前调用）
+ */
+export function warmupAudioContext() {
+  const ctx = getAudioContext();
+  
+  // 创建一个静音的短音符来"预热"音频系统
+  const oscillator = ctx.createOscillator();
+  const gainNode = ctx.createGain();
+  
+  gainNode.gain.setValueAtTime(0, ctx.currentTime); // 静音
+  oscillator.connect(gainNode);
+  gainNode.connect(ctx.destination);
+  
+  oscillator.start(ctx.currentTime);
+  oscillator.stop(ctx.currentTime + 0.001); // 保持很短，1毫秒
+  
+  console.log('🎵 Audio context warmed up');
 }
 
 /**
@@ -221,11 +384,22 @@ function getAudioContext() {
  * @param {number} frequency - 频率 (Hz)
  * @param {number} duration - 持续时间（秒）
  * @param {number} volume - 音量 (0-1)
- * @param {string} sdg - SDG编号 ('1', '3', '7', '13', '16')
+ * @param {string} sdg - SDG编号 ('1'-'17')
  */
 export function playNote(frequency, duration = 0.5, volume = 0.3, sdg = '1') {
   const ctx = getAudioContext();
   const timbre = SDG_TIMBRES[sdg] || SDG_TIMBRES['1'];
+  
+  // 🎵 调试日志
+  console.log('🎵 播放音符:', {
+    sdg: sdg,
+    sdgType: typeof sdg,
+    timbreName: timbre.name,
+    timbreDescription: timbre.description,
+    frequency: frequency.toFixed(2) + ' Hz',
+    oscillatorType: timbre.oscillatorType,
+    foundTimbre: SDG_TIMBRES[sdg] ? '✓ 找到音色' : '✗ 使用默认音色'
+  });
   
   // 创建增益节点
   const masterGain = ctx.createGain();
@@ -282,6 +456,13 @@ export function playChord(noteData, duration = 0.5, volume = 0.3) {
  * @param {number} duration - 持续时间（秒）
  */
 export function playValueNote(value, sdg = '1', duration = 0.5) {
+  console.log('🎼 playValueNote 调用:', {
+    value: value,
+    sdg: sdg,
+    sdgType: typeof sdg,
+    duration: duration
+  });
+  
   const note = valueToNote(value);
   playNote(note.frequency, duration, 0.3, sdg);
 }
@@ -292,6 +473,15 @@ export function playValueNote(value, sdg = '1', duration = 0.5) {
  * @param {number} duration - 持续时间（秒）
  */
 export function playValueChord(notesData, duration = 0.5) {
+  console.log('🎹 playValueChord 调用 (和弦):', {
+    noteCount: notesData.length,
+    notes: notesData.map(n => ({
+      value: n.value,
+      sdg: n.sdg,
+      sdgType: typeof n.sdg
+    }))
+  });
+  
   const chordData = notesData.map(note => ({
     frequency: valueToNote(note.value).frequency,
     sdg: note.sdg
@@ -301,9 +491,39 @@ export function playValueChord(notesData, duration = 0.5) {
 
 /**
  * 获取 SDG 的音色名称
- * @param {string} sdg - SDG编号
+ * @param {string} sdg - SDG编号 ('1'-'17')
  * @returns {string} - 音色名称
  */
 export function getTimbreName(sdg) {
   return SDG_TIMBRES[sdg]?.name || '钢琴';
+}
+
+/**
+ * 获取 SDG 的音色描述
+ * @param {string} sdg - SDG编号 ('1'-'17')
+ * @returns {string} - 音色描述
+ */
+export function getTimbreDescription(sdg) {
+  return SDG_TIMBRES[sdg]?.description || '温暖的钢琴 - 希望与温暖';
+}
+
+/**
+ * 获取所有可用的 SDG 音色列表
+ * @returns {Array} - SDG音色信息数组
+ */
+export function getAllTimbres() {
+  return Object.entries(SDG_TIMBRES).map(([sdg, timbre]) => ({
+    sdg,
+    name: timbre.name,
+    description: timbre.description
+  }));
+}
+
+/**
+ * 检查 SDG 是否有定义的音色
+ * @param {string} sdg - SDG编号
+ * @returns {boolean} - 是否有定义
+ */
+export function hasTimbre(sdg) {
+  return SDG_TIMBRES.hasOwnProperty(sdg);
 }

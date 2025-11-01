@@ -2,13 +2,13 @@
 
 // ------------------- 导入 -------------------
 import { setupYearControl, getCurrentYear } from './yearControl.js';
-import { sdgColors, sdgNames } from './sdgfile.js';
-import { valueToNote, playValueNote, playValueChord } from './noteMapping.js';
+import { sdgColors, sdgNames,getSDGIndicator, formatIndicatorHTML, formatIndicatorText  } from './sdgfile.js';
+import { valueToNote, playValueNote, playValueChord, warmupAudioContext } from './noteMapping.js';
 
 setupYearControl(); // 初始化年份控制
 
 // ------------------- 只显示5个SDG -------------------
-const selectedSDGList = [1, 3, 7, 13, 16];
+const selectedSDGList = [1, 2, 3, 4, 5];
 
 // ------------------- 全局状态 -------------------
 let currentSelectedIso = null;
@@ -76,6 +76,30 @@ function renderSDGCheckboxes() {
     label.appendChild(checkbox);
     label.appendChild(dot);
     label.append(`SDG ${i}: ${sdgNames[i.toString()] || ""}`);
+    
+    //  添加指标信息 hover tooltip
+    const indicatorInfo = getSDGIndicator(i);
+    if (indicatorInfo) {
+      // label.title = formatIndicatorText(i);
+      label.style.position = "relative";
+      
+      // 创建 tooltip 元素
+      const tooltip = document.createElement("div");
+      tooltip.className = "sdg-indicator-tooltip";
+      tooltip.innerHTML = formatIndicatorHTML(i);
+      tooltip.style.display = "none";
+      
+      // Hover 事件
+      label.addEventListener("mouseenter", () => {
+        tooltip.style.display = "block";
+      });
+      
+      label.addEventListener("mouseleave", () => {
+        tooltip.style.display = "none";
+      });
+      
+      label.appendChild(tooltip);
+    }
 
     // 🎵 创建试听按钮
     const previewBtn = document.createElement("button");
@@ -114,7 +138,10 @@ function renderSDGCheckboxes() {
       e.stopPropagation();
       
       // 播放中央C的音高 (值 50 对应 G4 在此系统中)
-      playValueNote(50, i, 0.5);
+      // 🎵 预热音频上下文
+      warmupAudioContext();
+      console.log("🔘 试听按钮被点击:", { originalSDG: i, convertedSDG: String(i), type: typeof String(i) });
+      playValueNote(50, String(i), 0.5);
       
       // 视觉反馈：按下动画
       previewBtn.style.transform = "scale(0.9)";
@@ -418,7 +445,7 @@ function hideFloatingCard() {
 function createQuarterNote(sdg, color, value) {
   const noteDiv = document.createElement("div");
   noteDiv.className = "quarter-note chord-note";
-  noteDiv.dataset.sdg = sdg;
+  noteDiv.dataset.sdg = String(sdg);
   noteDiv.dataset.value = value;
   
   // 🎵 应用音高位置
@@ -445,7 +472,8 @@ function createQuarterNote(sdg, color, value) {
   noteDiv.appendChild(noteStem);
   
   // 设置提示信息
-  noteDiv.title = `${noteInfo.fullNoteName} (Value: ${value})`;
+  noteDiv.title = `SDG ${sdg}- Value:${value} (${noteInfo.fullNoteName})`;
+
   
   return noteDiv;
 }
@@ -497,7 +525,7 @@ function addNoteToStaff(countryName, sdgList, iso) {
   chord.className = "chord";
   
   if (!hasAnyValue) {
-    // 🎵 所有 SDG 都没有值 - 显示休止符
+    //  所有 SDG 都没有值 - 显示休止符
     const restSymbol = document.createElement("div");
     restSymbol.className = "rest-symbol";
     restSymbol.innerHTML = "𝄽"; // Unicode 休止符
@@ -528,7 +556,7 @@ function addNoteToStaff(countryName, sdgList, iso) {
     // 按值排序（从低到高）
     notesData.sort((a, b) => a.value - b.value);
     
-    // 🎵 检测相同音高的音符并分组
+    //  检测相同音高的音符并分组
     const valueGroups = {};
     notesData.forEach(data => {
       const key = Math.floor(data.value / 10) * 10; // 按10分值区间分组（相同音符）
@@ -539,11 +567,11 @@ function addNoteToStaff(countryName, sdgList, iso) {
     notesData.forEach(data => {
       const note = createQuarterNote(data.sdg, data.color, data.value);
       
-      // 🎵 如果同一音高有多个音符，左右对称错开显示
+      //  如果同一音高有多个音符，左右对称错开显示
       const key = Math.floor(data.value / 10) * 10;
       const group = valueGroups[key];
       if (group.length > 1) {
-        // 🎵 重叠显示但设置透明度，让用户能看出重叠
+        //  重叠显示但设置透明度，让用户能看出重叠
         note.style.opacity = '0.7';
       }
       
@@ -559,7 +587,7 @@ function addNoteToStaff(countryName, sdgList, iso) {
   label.textContent = countryName;
   noteGroup.appendChild(label);
 
-  // 🎵 添加点击播放功能
+  //  添加点击播放功能
   noteGroup.addEventListener("click", (e) => {
     // 如果点击的是删除按钮，不播放声音
     if (e.target.classList.contains('delete-note-btn')) return;
@@ -646,7 +674,7 @@ startComposeBtn.addEventListener("click", () => {
   
   setTimeout(() => {
     map.resize();
-    console.log("✅ 地图大小已调整 (Composer 打开)");
+    console.log(" 地图大小已调整 (Composer 打开)");
   }, 350);
 });
 
@@ -661,7 +689,7 @@ closeComposeBtn.addEventListener("click", () => {
   
   setTimeout(() => {
     map.resize();
-    console.log("✅ 地图大小已调整 (Composer 关闭)");
+    console.log(" 地图大小已调整 (Composer 关闭)");
   }, 350);
 });
 
@@ -716,7 +744,19 @@ document.getElementById("play-melody").addEventListener("click", () => {
     return;
   }
   
-  showMessage("Playing melody...");
+  //  预热音频上下文（解决第一个音符丢失问题）
+  warmupAudioContext();
+  
+  // 获取tempo值（BPM - Beats Per Minute）
+  const tempoInput = document.getElementById("tempo-input");
+  const tempo = parseInt(tempoInput.value) || 86; // 默认86 BPM
+  
+  // 计算每个四分音符的持续时间（毫秒）
+  // 60秒 / BPM = 每拍秒数，再转换为毫秒
+  const beatDuration = (60 / tempo) * 1000; // 毫秒
+  const noteDuration = beatDuration / 1000; // 转换为秒，用于音符播放时长
+  
+  showMessage(`Playing melody at ${tempo} BPM...`);
   
   noteGroups.forEach((group, index) => {
     setTimeout(() => {
@@ -730,12 +770,12 @@ document.getElementById("play-melody").addEventListener("click", () => {
       
       if (notesData.length === 1) {
         // 单音符
-        playValueNote(notesData[0].value, notesData[0].sdg, 0.6);
+        playValueNote(notesData[0].value, notesData[0].sdg, noteDuration);
       } else if (notesData.length > 1) {
         // 和弦
-        playValueChord(notesData, 0.6);
+        playValueChord(notesData, noteDuration);
       }
-    }, index * 700); // 每个音符间隔 0.7 秒
+    }, index * beatDuration + 100); // 所有音符统一延迟100ms
   });
 });
 
@@ -762,8 +802,8 @@ document.getElementById("clear-all").addEventListener("click", () => {
   
   notePositions = [];
   
-  console.log("🗑 清空所有选择和音符");
-  console.log(`📊 当前占用: 0/8`);
+  console.log(" 清空所有选择和音符");
+  console.log(` 当前占用: 0/8`);
 });
 
 // ------------------- Shuffle 随机打乱 -------------------
@@ -780,7 +820,7 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
     return;
   }
   
-  // 🎲 Fisher-Yates 随机打乱算法
+  //  Fisher-Yates 随机打乱算法
   const shuffleArray = (array) => {
     const newArray = [...array];
     for (let i = newArray.length - 1; i > 0; i--) {
@@ -954,3 +994,25 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
 // ------------------- 初始化 -------------------
 renderSDGCheckboxes();
 console.log("🌍 SDG Map Ready with Smart Position Management and Note Mapping!");
+
+// ------------------- Tempo 输入验证 -------------------
+const tempoInput = document.getElementById("tempo-input");
+if (tempoInput) {
+  tempoInput.addEventListener("input", () => {
+    let value = parseInt(tempoInput.value);
+    
+    // 限制在40-240之间
+    if (value < 40) {
+      tempoInput.value = 40;
+    } else if (value > 240) {
+      tempoInput.value = 240;
+    }
+  });
+  
+  // 防止输入非数字
+  tempoInput.addEventListener("keypress", (e) => {
+    if (!/[0-9]/.test(e.key)) {
+      e.preventDefault();
+    }
+  });
+}

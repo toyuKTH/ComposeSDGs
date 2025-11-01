@@ -66,3 +66,160 @@ const sdgNames = {
 export { sdgNames };
 
 
+// ========== SDG 指标映射配置 ==========
+// 每个 SDG 的完整信息，包括目标名称和具体子指标
+
+export const sdgIndicators = {
+  '1': {
+    goal: 'No Poverty',
+    indicator: 'Indicator 1.3.1',
+    description: 'Proportion of population covered by at least one social protection benefit, by sex (%)',
+    series: 'SI_COV_BENFTS'
+  },
+  '2': {
+    goal: 'Zero Hunger',
+    indicator: 'Indicator 2.4.1',
+    description: 'Progress toward productive and sustainable agriculture, trend score',
+    series: 'AG_LND_SUST_PRXTS',
+    note: 'PROXY'
+  },
+  '3': {
+    goal: 'Good Health and Well-being',
+    indicator: 'Indicator 3.8.1',
+    description: 'Universal health coverage (UHC) service coverage index',
+    series: 'SH_ACS_UNHC'
+  },
+  '4': {
+    goal: 'Quality Education',
+    indicator: 'Indicator 4.1.2',
+    description: 'Completion rate, by sex, location, wealth quintile and education level (%)',
+    series: 'SE_TOT_CPLR'
+  },
+  '5': {
+    goal: 'Gender Equality',
+    indicator: 'Indicator 5.5.1',
+    description: 'Proportion of seats held by women in national parliaments (% of total number of seats)',
+    series: 'SG_GEN_PARL'
+  },
+  '6': {
+    goal: 'Clean Water and Sanitation',
+    indicator: 'Indicator 6.2.1',
+    description: 'Proportion of population with basic handwashing facilities on premises, by urban/rural (%)',
+    series: 'SH_SAN_HNDWSH'
+  },
+  '7': {
+    goal: 'Affordable and Clean Energy',
+    indicator: 'Indicator 7.1.1',
+    description: 'Proportion of population with access to electricity, by urban/rural (%)',
+    series: 'EG_ACS_ELEC'
+  },
+  '8': {
+    goal: 'Decent Work and Economic Growth',
+    indicator: 'Indicator 8.10.2',
+    description: 'Proportion of adults (15 years and older) with an account at a financial institution or mobile-money-service provider, by sex (%)',
+    series: 'FB_BNK_ACCSS'
+  },
+  '9': {
+    goal: 'Industry, Innovation and Infrastructure',
+    indicator: 'Indicator 9.2.2',
+    description: 'Manufacturing employment as a proportion of total employment - 13th ICLS (%)',
+    series: 'SL_TLF_MANF'
+  },
+  '10': {
+    goal: 'Reduced Inequalities',
+    indicator: 'Indicator 10.4.1',
+    description: 'Labour share of GDP (%)',
+    series: 'SL_EMP_GTOTL'
+  },
+  '11': {
+    goal: 'Sustainable Cities and Communities',
+    indicator: 'Indicator 11.2.1',
+    description: 'Proportion of population that has convenient access to public transport (%)',
+    series: 'SP_TRN_PUBL'
+  },
+  '12': {
+    goal: 'Responsible Consumption and Production',
+    indicator: 'Indicator 12.5.1',
+    description: 'Proportion of municipal waste recycled (%)',
+    series: 'EN_MWT_RCYR'
+  },
+  '13': {
+    goal: 'Climate Action',
+    indicator: 'Indicator 11.b.2 / 13.1.3',
+    description: 'Proportion of local governments that adopt and implement local disaster risk reduction strategies in line with national disaster risk reduction strategies (%)',
+    series: 'SG_DSR_SILS'
+  },
+  '14': {
+    goal: 'Life Below Water',
+    indicator: 'Indicator 14.4.1',
+    description: 'Proportion of fish stocks within biologically sustainable levels (not overexploited) (%)',
+    series: 'ER_H2O_FWTL'
+  },
+  '15': {
+    goal: 'Life on Land',
+    indicator: 'Indicator 15.1.1',
+    description: 'Forest area as a proportion of total land area (%)',
+    series: 'AG_LND_FRST'
+  },
+  '16': {
+    goal: 'Peace, Justice and Strong Institutions',
+    indicator: 'Indicator 16.1.4',
+    description: 'Proportion of population that feel safe walking alone around the area they live after dark (%)',
+    series: 'VC_SNS_WALN_DRK'
+  },
+  '17': {
+    goal: 'Partnerships for the Goals',
+    indicator: 'Indicator 17.1.1',
+    description: 'Total government revenue (budgetary central government) as a proportion of GDP (%)',
+    series: 'GR_G14_GDP'
+  }
+};
+
+/**
+ * 获取 SDG 的指标信息
+ * @param {string|number} sdg - SDG编号
+ * @returns {Object} - 指标信息对象
+ */
+export function getSDGIndicator(sdg) {
+  const key = String(sdg);
+  return sdgIndicators[key] || null;
+}
+
+/**
+ * 格式化 SDG 指标信息为 HTML（用于 tooltip）
+ * @param {string|number} sdg - SDG编号
+ * @returns {string} - HTML字符串
+ */
+export function formatIndicatorHTML(sdg) {
+  const info = getSDGIndicator(sdg);
+  if (!info) return 'No indicator information available';
+
+  return `
+    <div class="indicator-tooltip">
+      <div class="indicator-code">
+        <strong>${info.indicator}</strong>
+      </div>
+      <div class="indicator-description">
+        ${info.description}
+      </div>
+      <div class="indicator-series">
+        Series: <code>${info.series}</code>
+      </div>
+      ${info.note ? `<div class="indicator-note">(${info.note})</div>` : ''}
+    </div>
+  `;
+}
+
+/**
+ * 格式化 SDG 指标信息为纯文本（用于 title 属性）
+ * @param {string|number} sdg - SDG编号
+ * @returns {string} - 纯文本字符串
+ */
+export function formatIndicatorText(sdg) {
+  const info = getSDGIndicator(sdg);
+  if (!info) return 'No indicator information available';
+  
+  let text = `${info.indicator}\n${info.description}\nSeries: ${info.series}`;
+  if (info.note) text += `\n(${info.note})`;
+  return text;
+}
