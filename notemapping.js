@@ -1,16 +1,42 @@
 // ========== 音符映射模块 (0-100 → 10个音符) ==========
 
+// 全局调式状态
+let currentMode = 'major'; // 'major' 或 'minor'
+
+/**
+ * 设置当前调式
+ * @param {string} mode - 'major' 或 'minor'
+ */
+export function setMode(mode) {
+  if (mode === 'major' || mode === 'minor') {
+    currentMode = mode;
+    console.log(`🎼 调式切换为: ${mode === 'major' ? 'C大调' : 'C小调'}`);
+  }
+}
+
+/**
+ * 获取当前调式
+ * @returns {string} - 当前调式
+ */
+export function getMode() {
+  return currentMode;
+}
+
 /**
  * 将 0-100 的数值映射到音符
  * @param {number} value - SDG 分数 (0-100)
+ * @param {string} mode - 调式 ('major' 或 'minor')，默认使用全局调式
  * @returns {Object} - 包含音符信息的对象
  */
-export function valueToNote(value) {
+export function valueToNote(value, mode = null) {
+  // 使用传入的调式或全局调式
+  const useMode = mode || currentMode;
+
   // 确保值在 0-100 范围内
   const clampedValue = Math.max(0, Math.min(100, value));
-  
+
   let noteName, frequency, octave, positionClass, needsLedgerLine;
-  
+
   if (clampedValue <= 10) {
     // 0-10: C (下加一线)
     noteName = 'C';
@@ -26,9 +52,14 @@ export function valueToNote(value) {
     positionClass = 'note-value-11-20';
     needsLedgerLine = false;
   } else if (clampedValue <= 30) {
-    // 21-30: E (第5线)
-    noteName = 'E';
-    frequency = 329.63; // E4
+    // 21-30: E (大调) 或 Eb (小调) - 3级音
+    if (useMode === 'minor') {
+      noteName = 'Eb';
+      frequency = 311.13; // Eb4 (降3级音)
+    } else {
+      noteName = 'E';
+      frequency = 329.63; // E4
+    }
     octave = 4;
     positionClass = 'note-value-21-30';
     needsLedgerLine = false;
@@ -47,16 +78,26 @@ export function valueToNote(value) {
     positionClass = 'note-value-41-50';
     needsLedgerLine = false;
   } else if (clampedValue <= 60) {
-    // 51-60: A
-    noteName = 'A';
-    frequency = 440.00; // A4 (标准音)
+    // 51-60: A (大调) 或 Ab (小调) - 6级音
+    if (useMode === 'minor') {
+      noteName = 'Ab';
+      frequency = 415.30; // Ab4 (降6级音)
+    } else {
+      noteName = 'A';
+      frequency = 440.00; // A4 (标准音)
+    }
     octave = 4;
     positionClass = 'note-value-51-60';
     needsLedgerLine = false;
   } else if (clampedValue <= 70) {
-    // 61-70: B (第3线，中间线)
-    noteName = 'B';
-    frequency = 493.88; // B4
+    // 61-70: B (大调) 或 Bb (小调) - 7级音
+    if (useMode === 'minor') {
+      noteName = 'Bb';
+      frequency = 466.16; // Bb4 (降7级音)
+    } else {
+      noteName = 'B';
+      frequency = 493.88; // B4
+    }
     octave = 4;
     positionClass = 'note-value-61-70';
     needsLedgerLine = false;
@@ -75,14 +116,19 @@ export function valueToNote(value) {
     positionClass = 'note-value-81-90';
     needsLedgerLine = false;
   } else {
-    // 91-100: E'
-    noteName = 'E';
-    frequency = 659.25; // E5
+    // 91-100: E' (大调) 或 Eb' (小调)
+    if (useMode === 'minor') {
+      noteName = 'Eb';
+      frequency = 622.25; // Eb5 (降3级音，高八度)
+    } else {
+      noteName = 'E';
+      frequency = 659.25; // E5
+    }
     octave = 5;
     positionClass = 'note-value-91-100';
     needsLedgerLine = false;
   }
-  
+
   return {
     noteName,           // 音符名称，如 'C', 'D', 'E'
     frequency,          // 频率 (Hz)
@@ -90,7 +136,8 @@ export function valueToNote(value) {
     fullNoteName: `${noteName}${octave}`, // 完整名称，如 'C4', 'E5'
     positionClass,      // CSS类名，用于定位
     needsLedgerLine,    // 是否需要加线 ('below', 'above', 或 false)
-    value: clampedValue // 原始数值
+    value: clampedValue, // 原始数值
+    mode: useMode       // 当前使用的调式
   };
 }
 
@@ -101,7 +148,7 @@ export function valueToNote(value) {
  */
 export function sdgValuesToNotes(sdgValues) {
   const notes = [];
-  
+
   for (const [sdg, value] of Object.entries(sdgValues)) {
     if (typeof value === 'number') {
       const noteInfo = valueToNote(value);
@@ -109,10 +156,10 @@ export function sdgValuesToNotes(sdgValues) {
       notes.push(noteInfo);
     }
   }
-  
+
   // 按音高排序（从低到高）
   notes.sort((a, b) => a.frequency - b.frequency);
-  
+
   return notes;
 }
 
@@ -125,7 +172,7 @@ export function sdgValuesToNotes(sdgValues) {
 export function getInterval(value1, value2) {
   const note1 = valueToNote(value1);
   const note2 = valueToNote(value2);
-  
+
   // 计算半音数差异（简化版）
   const semitones = Math.round(12 * Math.log2(note2.frequency / note1.frequency));
   return semitones;
@@ -168,177 +215,98 @@ export function isHarmonic(value1, value2) {
  * SDG 17 (伙伴关系): 丰富的交响音色 - 代表合作与融合
  */
 const SDG_TIMBRES = {
-  '1': {
-    name: '钢琴 (Piano)',
-    oscillatorType: 'triangle',
-    attack: 0.01,
+  // ===== 1. 纯正基音（干净、中性） =====
+'1': {
+  name: 'Base Tone',
+  oscillatorType: 'sine',
+  harmonics: [1, 0.6, 0.4, 0.2],
+    attack: 0.05,                   // 稍慢起音
     decay: 0.1,
-    sustain: 0.7,
+    sustain: 0.9,
     release: 0.3,
-    harmonics: [1, 0.3, 0.1],
-    description: '温暖的钢琴 - 希望与温暖'
-  },
+    filterType: 'lowpass',
+    filterFrequency: 800,           // 压暗高频，强调低沉
+    gain: 0.95,
+    description: '低沉厚重的底音'
+},
+
+
+  // ===== 2. 粗糙明亮（带能量） =====
   '2': {
-    name: '大提琴 (Cello)',
-    oscillatorType: 'sawtooth',
-    attack: 0.08,
-    decay: 0.15,
-    sustain: 0.85,
-    release: 0.4,
+    name: 'Bright Saw',
+    oscillatorType: 'sawtooth',     // 明亮锯齿波
     harmonics: [1, 0.5, 0.3, 0.15],
-    description: '饱满的大提琴 - 丰盛与滋养'
-  },
-  '3': {
-    name: '木琴 (Xylophone)',
-    oscillatorType: 'sine',
-    attack: 0.001,
-    decay: 0.05,
-    sustain: 0.3,
-    release: 0.1,
-    harmonics: [1, 0.5, 0.2, 0.1],
-    description: '明亮的木琴 - 活力与健康'
-  },
-  '4': {
-    name: '钟琴 (Glockenspiel)',
-    oscillatorType: 'sine',
-    attack: 0.002,
-    decay: 0.08,
-    sustain: 0.4,
-    release: 0.15,
-    harmonics: [1, 0.6, 0.3, 0.2, 0.1],
-    description: '清晰的钟琴 - 智慧与启发'
-  },
-  '5': {
-    name: '竖琴 (Harp)',
-    oscillatorType: 'triangle',
-    attack: 0.005,
-    decay: 0.2,
-    sustain: 0.5,
+    attack: 0.02,
+    decay: 0.12,
+    sustain: 0.7,
     release: 0.25,
-    harmonics: [1, 0.4, 0.2, 0.05],
-    description: '优雅的竖琴 - 平衡与和谐'
+    filterType: 'highpass',
+    filterFrequency: 1500,          // 强化高频
+    gain: 0.85,
+    description: '明亮粗糙的锯齿音'
   },
-  '6': {
-    name: '马林巴 (Marimba)',
-    oscillatorType: 'sine',
-    attack: 0.003,
-    decay: 0.1,
-    sustain: 0.4,
-    release: 0.2,
-    harmonics: [1, 0.45, 0.25, 0.1],
-    description: '流动的马林巴 - 水的灵动'
-  },
-  '7': {
-    name: '合成器 (Synth)',
-    oscillatorType: 'sawtooth',
-    attack: 0.05,
-    decay: 0.1,
+
+  // ===== 3. 金属锐利（电子风） =====
+  '3': {
+    name: 'Metal Edge',
+    oscillatorType: 'square',       // 带方波边缘
+    harmonics: [1, 0.4, 0.2, 0.1],
+    attack: 0.005,
+    decay: 0.15,
     sustain: 0.6,
     release: 0.2,
-    harmonics: [1, 0.4, 0.3],
-    description: '科技合成器 - 能源与创新'
+    filterType: 'bandpass',
+    filterFrequency: 2500,          // 聚焦中高频
+    gain: 0.9,
+    description: '锐利金属方波'
   },
-  '8': {
-    name: '管风琴 (Organ)',
-    oscillatorType: 'square',
-    attack: 0.02,
-    decay: 0.05,
-    sustain: 0.9,
-    release: 0.3,
-    harmonics: [1, 0.7, 0.5, 0.3],
-    description: '稳固的管风琴 - 工作与增长'
-  },
-  '9': {
-    name: '电子合成器 (Electronic Synth)',
-    oscillatorType: 'square',
-    attack: 0.03,
-    decay: 0.08,
-    sustain: 0.65,
-    release: 0.25,
-    harmonics: [1, 0.5, 0.4, 0.2],
-    description: '现代电子音 - 创新与基建'
-  },
-  '10': {
-    name: '混合音色 (Blended)',
-    oscillatorType: 'triangle',
-    attack: 0.04,
-    decay: 0.12,
-    sustain: 0.75,
-    release: 0.3,
-    harmonics: [1, 0.45, 0.35, 0.2, 0.1],
-    description: '融合音色 - 包容与平等'
-  },
-  '11': {
-    name: '铜管 (Brass)',
-    oscillatorType: 'sawtooth',
-    attack: 0.06,
-    decay: 0.08,
-    sustain: 0.8,
-    release: 0.2,
-    harmonics: [1, 0.6, 0.4, 0.25],
-    description: '明亮铜管 - 城市活力'
-  },
-  '12': {
-    name: '古筝 (Guzheng)',
-    oscillatorType: 'triangle',
-    attack: 0.01,
-    decay: 0.15,
-    sustain: 0.55,
-    release: 0.35,
-    harmonics: [1, 0.35, 0.15, 0.08],
-    description: '节制古筝 - 负责任消费'
-  },
-  '13': {
-    name: '长笛 (Flute)',
-    oscillatorType: 'sine',
-    attack: 0.08,
-    decay: 0.05,
-    sustain: 0.8,
-    release: 0.2,
-    harmonics: [1, 0.2, 0.05],
-    description: '空灵长笛 - 气候与大气'
-  },
-  '14': {
-    name: '振音器 (Vibraphone)',
-    oscillatorType: 'sine',
-    attack: 0.004,
-    decay: 0.12,
-    sustain: 0.5,
-    release: 0.3,
-    harmonics: [1, 0.55, 0.3, 0.15, 0.05],
-    description: '波动振音 - 海洋生态'
-  },
-  '15': {
-    name: '木管 (Woodwind)',
-    oscillatorType: 'triangle',
-    attack: 0.06,
+
+  // ===== 4. 短促打击（清脆瞬态） =====
+  '4': {
+    name: 'Perc Click',
+    oscillatorType: 'triangle',     // 柔中带锐
+    harmonics: [1, 0.3, 0.15],
+    attack: 0.001,                  // 瞬发
     decay: 0.1,
-    sustain: 0.75,
-    release: 0.25,
-    harmonics: [1, 0.4, 0.25, 0.1],
-    description: '自然木管 - 陆地生态'
+    sustain: 0.1,
+    release: 0.05,                  // 短尾
+    filterType: 'highpass',
+    filterFrequency: 2000,
+    gain: 0.9,
+    description: '清脆短促的打击感'
   },
-  '16': {
-    name: '弦乐 (Strings)',
-    oscillatorType: 'sawtooth',
-    attack: 0.15,
-    decay: 0.1,
-    sustain: 0.9,
-    release: 0.4,
+
+  // ===== 5. 厚重低沉（包裹感强） =====
+  '5': {
+    name: 'Deep Bass',
+    oscillatorType: 'sawtooth',     // 锯齿带低频能量
     harmonics: [1, 0.6, 0.4, 0.2],
-    description: '庄重弦乐 - 和平正义'
+    attack: 0.05,                   // 稍慢起音
+    decay: 0.1,
+    sustain: 0.9,
+    release: 0.3,
+    filterType: 'lowpass',
+    filterFrequency: 800,           // 压暗高频，强调低沉
+    gain: 0.95,
+    description: '低沉厚重的底音'
   },
-  '17': {
-    name: '交响乐 (Orchestra)',
-    oscillatorType: 'sawtooth',
-    attack: 0.1,
-    decay: 0.12,
-    sustain: 0.85,
-    release: 0.35,
-    harmonics: [1, 0.5, 0.4, 0.3, 0.15],
-    description: '交响合奏 - 全球伙伴'
-  }
+
+  // ===== 6–17 占位 =====
+  '6': { name: '', description: '' },
+  '7': { name: '', description: '' },
+  '8': { name: '', description: '' },
+  '9': { name: '', description: '' },
+  '10': { name: '', description: '' },
+  '11': { name: '', description: '' },
+  '12': { name: '', description: '' },
+  '13': { name: '', description: '' },
+  '14': { name: '', description: '' },
+  '15': { name: '', description: '' },
+  '16': { name: '', description: '' },
+  '17': { name: '', description: '' },
 };
+
+
 
 // ========== 音频播放支持 (Web Audio API) ==========
 
@@ -350,7 +318,7 @@ let audioContext = null;
 function getAudioContext() {
   if (!audioContext) {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    
+
     // 确保音频上下文已启动
     if (audioContext.state === 'suspended') {
       audioContext.resume();
@@ -364,18 +332,18 @@ function getAudioContext() {
  */
 export function warmupAudioContext() {
   const ctx = getAudioContext();
-  
+
   // 创建一个静音的短音符来"预热"音频系统
   const oscillator = ctx.createOscillator();
   const gainNode = ctx.createGain();
-  
+
   gainNode.gain.setValueAtTime(0, ctx.currentTime); // 静音
   oscillator.connect(gainNode);
   gainNode.connect(ctx.destination);
-  
+
   oscillator.start(ctx.currentTime);
   oscillator.stop(ctx.currentTime + 0.001); // 保持很短，1毫秒
-  
+
   console.log('🎵 Audio context warmed up');
 }
 
@@ -389,7 +357,7 @@ export function warmupAudioContext() {
 export function playNote(frequency, duration = 0.5, volume = 0.3, sdg = '1') {
   const ctx = getAudioContext();
   const timbre = SDG_TIMBRES[sdg] || SDG_TIMBRES['1'];
-  
+
   // 🎵 调试日志
   console.log('🎵 播放音符:', {
     sdg: sdg,
@@ -400,35 +368,47 @@ export function playNote(frequency, duration = 0.5, volume = 0.3, sdg = '1') {
     oscillatorType: timbre.oscillatorType,
     foundTimbre: SDG_TIMBRES[sdg] ? '✓ 找到音色' : '✗ 使用默认音色'
   });
-  
+
   // 创建增益节点
   const masterGain = ctx.createGain();
   masterGain.connect(ctx.destination);
-  
+
   // 根据音色配置创建多个振荡器（泛音）
   timbre.harmonics.forEach((harmonicVolume, index) => {
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();
-    
+
     // 设置振荡器类型和频率
     oscillator.type = timbre.oscillatorType;
     oscillator.frequency.setValueAtTime(frequency * (index + 1), ctx.currentTime);
-    
-    // ADSR 包络
+
+    // ADSR 包络 - 修复时间顺序问题
     const attackTime = timbre.attack;
     const decayTime = timbre.decay;
     const sustainLevel = timbre.sustain * volume * harmonicVolume;
     const releaseTime = timbre.release;
-    
+
+    // 确保时间点按顺序递增
+    const attackEnd = ctx.currentTime + attackTime;
+    const decayEnd = attackEnd + decayTime;
+    const sustainEnd = Math.max(decayEnd, ctx.currentTime + duration - releaseTime);
+    const releaseEnd = ctx.currentTime + duration;
+
     gainNode.gain.setValueAtTime(0, ctx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(volume * harmonicVolume, ctx.currentTime + attackTime); // Attack
-    gainNode.gain.exponentialRampToValueAtTime(Math.max(sustainLevel, 0.01), ctx.currentTime + attackTime + decayTime); // Decay
-    gainNode.gain.setValueAtTime(sustainLevel, ctx.currentTime + duration - releaseTime); // Sustain
-    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration); // Release
-    
+    gainNode.gain.linearRampToValueAtTime(volume * harmonicVolume, attackEnd); // Attack
+    gainNode.gain.exponentialRampToValueAtTime(Math.max(sustainLevel, 0.01), decayEnd); // Decay
+
+    // 只有当有足够时间时才设置Sustain
+    if (sustainEnd > decayEnd) {
+      gainNode.gain.setValueAtTime(sustainLevel, sustainEnd); // Sustain
+    }
+
+    gainNode.gain.exponentialRampToValueAtTime(0.01, releaseEnd); // Release
+
+
     oscillator.connect(gainNode);
     gainNode.connect(masterGain);
-    
+
     oscillator.start(ctx.currentTime);
     oscillator.stop(ctx.currentTime + duration);
   });
@@ -443,7 +423,7 @@ export function playNote(frequency, duration = 0.5, volume = 0.3, sdg = '1') {
 export function playChord(noteData, duration = 0.5, volume = 0.3) {
   // 降低单个音符音量以避免削波
   const noteVolume = volume / Math.sqrt(noteData.length);
-  
+
   noteData.forEach(note => {
     playNote(note.frequency, duration, noteVolume, note.sdg);
   });
@@ -456,13 +436,13 @@ export function playChord(noteData, duration = 0.5, volume = 0.3) {
  * @param {number} duration - 持续时间（秒）
  */
 export function playValueNote(value, sdg = '1', duration = 0.5) {
-  console.log('🎼 playValueNote 调用:', {
+  console.log(' playValueNote 调用:', {
     value: value,
     sdg: sdg,
     sdgType: typeof sdg,
     duration: duration
   });
-  
+
   const note = valueToNote(value);
   playNote(note.frequency, duration, 0.3, sdg);
 }
@@ -473,7 +453,7 @@ export function playValueNote(value, sdg = '1', duration = 0.5) {
  * @param {number} duration - 持续时间（秒）
  */
 export function playValueChord(notesData, duration = 0.5) {
-  console.log('🎹 playValueChord 调用 (和弦):', {
+  console.log(' playValueChord 调用 (和弦):', {
     noteCount: notesData.length,
     notes: notesData.map(n => ({
       value: n.value,
@@ -481,7 +461,7 @@ export function playValueChord(notesData, duration = 0.5) {
       sdgType: typeof n.sdg
     }))
   });
-  
+
   const chordData = notesData.map(note => ({
     frequency: valueToNote(note.value).frequency,
     sdg: note.sdg

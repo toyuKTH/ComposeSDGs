@@ -2,8 +2,8 @@
 
 // ------------------- 导入 -------------------
 import { setupYearControl, getCurrentYear } from './yearControl.js';
-import { sdgColors, sdgNames,getSDGIndicator, formatIndicatorHTML, formatIndicatorText  } from './sdgfile.js';
-import { valueToNote, playValueNote, playValueChord, warmupAudioContext } from './noteMapping.js';
+import { sdgColors, sdgNames, getSDGIndicator, formatIndicatorHTML, formatIndicatorText } from './sdgfile.js';
+import { valueToNote, playValueNote, playValueChord, setMode, getMode } from './noteMapping.js';
 
 setupYearControl(); // 初始化年份控制
 
@@ -19,14 +19,14 @@ let notePositions = []; // 存储已添加的音符位置
 function getNextAvailablePosition() {
   // 找出所有已占用的位置
   const occupiedPositions = notePositions.map(n => n.position);
-  
+
   // 从1到8找第一个未占用的位置
   for (let i = 1; i <= 8; i++) {
     if (!occupiedPositions.includes(i)) {
       return i;
     }
   }
-  
+
   return null; // 没有可用位置
 }
 
@@ -48,7 +48,7 @@ function renderSDGCheckboxes() {
     wrapper.style.alignItems = "center";
     wrapper.style.gap = "8px";
     wrapper.style.marginBottom = "6px";
-    
+
     const label = document.createElement("label");
     label.classList.add("sdg-label");
     label.style.display = "flex";
@@ -76,28 +76,28 @@ function renderSDGCheckboxes() {
     label.appendChild(checkbox);
     label.appendChild(dot);
     label.append(`SDG ${i}: ${sdgNames[i.toString()] || ""}`);
-    
+
     //  添加指标信息 hover tooltip
     const indicatorInfo = getSDGIndicator(i);
     if (indicatorInfo) {
       // label.title = formatIndicatorText(i);
       label.style.position = "relative";
-      
+
       // 创建 tooltip 元素
       const tooltip = document.createElement("div");
       tooltip.className = "sdg-indicator-tooltip";
       tooltip.innerHTML = formatIndicatorHTML(i);
       tooltip.style.display = "none";
-      
+
       // Hover 事件
       label.addEventListener("mouseenter", () => {
         tooltip.style.display = "block";
       });
-      
+
       label.addEventListener("mouseleave", () => {
         tooltip.style.display = "none";
       });
-      
+
       label.appendChild(tooltip);
     }
 
@@ -120,29 +120,28 @@ function renderSDGCheckboxes() {
     previewBtn.style.alignItems = "center";
     previewBtn.style.justifyContent = "center";
     previewBtn.style.fontWeight = "bold";
-    
+
     // 悬停效果
     previewBtn.addEventListener("mouseenter", () => {
       previewBtn.style.transform = "scale(1.1)";
       previewBtn.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
     });
-    
+
     previewBtn.addEventListener("mouseleave", () => {
       previewBtn.style.transform = "scale(1)";
       previewBtn.style.boxShadow = "none";
     });
-    
+
     // 点击播放中央C音高 (值为 50，对应 G4)
     previewBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       // 播放中央C的音高 (值 50 对应 G4 在此系统中)
       // 🎵 预热音频上下文
-      warmupAudioContext();
       console.log("🔘 试听按钮被点击:", { originalSDG: i, convertedSDG: String(i), type: typeof String(i) });
-      playValueNote(50, String(i), 0.5);
-      
+      playValueNote(5, String(i), 1);
+
       // 视觉反馈：按下动画
       previewBtn.style.transform = "scale(0.9)";
       setTimeout(() => {
@@ -197,7 +196,7 @@ mapboxgl.accessToken =
 const map = new mapboxgl.Map({
   container: "map",
   style: "mapbox://styles/toyukth/cmc38ef6801je01qxefcwfg00",
-//   projection: 'globe',
+  //   projection: 'globe',
   zoom: 0.96,
   center: [105.7, 39.1],
   antialias: true
@@ -210,9 +209,9 @@ fetch("./data/sdg_fake_data_mapped.json")
   .then(r => r.json())
   .then(json => {
     sdgData = json;
-    console.log("✅ SDG 数据加载成功");
+    console.log("SDG 数据加载成功");
   })
-  .catch(err => console.error("❌ 加载 SDG 数据失败:", err));
+  .catch(err => console.error(" 加载 SDG 数据失败:", err));
 
 // ------------------- 工具函数 -------------------
 function showMessage(msg, duration = 2000) {
@@ -313,36 +312,57 @@ function updateFloatingCardContent(iso, name, sdgList, year, data) {
   sdgList.forEach(sdg => {
     const v = getSDGValue(data, iso, year, sdg);
     const display = typeof v === "number" ? v.toFixed(1) : "no value";
-    
+
     // 获取音符信息
     let noteName = "𝄽"; // 休止符 (Unicode)
     if (typeof v === "number") {
       const noteInfo = valueToNote(v);
       noteName = noteInfo.fullNoteName;
     }
-    
+
     // 获取SDG颜色
     const color = sdgColors[sdg] || "#667eea";
-    
+
     const row = document.createElement("div");
     row.className = "sdg-item";
     row.innerHTML = `
-      <span style="color: ${color}; font-weight: 700;">SDG ${sdg}</span>
-      <span style="color: ${color}; font-weight: 700;">${display}</span>
-      <span style="color: ${color}; font-weight: 700;">${noteName}</span>
-    `;
+  <span style="color: ${color}; font-weight: 700;">SDG ${sdg}</span>
+  <span style="color: ${color}; font-weight: 700;">${display}</span>
+  <span style="color: ${color}; font-weight: 700;">${noteName}</span>
+  <button class="sdg-play-btn" style="
+      background:${color};
+      border:none;
+      border-radius:50%;
+      color:#fff;
+      width:28px;
+      height:28px;
+      font-size:16px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow:0 2px 6px rgba(0,0,0,0.15);
+  ">♪</button>
+`;
+
+    const playBtn = row.querySelector('.sdg-play-btn');
+    playBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (typeof v === "number") playValueNote(v, sdg, 0.5);
+    });
+
     container.appendChild(row);
   });
 
   // 更新按钮状态
   const composerArea = document.getElementById("composer-area");
   const hasSpace = hasAvailableSpace();
-  
+
   if (composerArea.classList.contains("hidden") || sdgList.length === 0) {
     addBtn.classList.add("disabled");
     addBtn.disabled = true;
-    addBtn.textContent = composerArea.classList.contains("hidden") 
-      ? "Open Composer First" 
+    addBtn.textContent = composerArea.classList.contains("hidden")
+      ? "Open Composer First"
       : "Select SDG First";
   } else if (!hasSpace) {
     addBtn.classList.add("disabled");
@@ -359,7 +379,7 @@ function updateFloatingCardContent(iso, name, sdgList, year, data) {
   const closeBtn = card.querySelector(".close-btn");
   const newCloseBtn = closeBtn.cloneNode(true);
   closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-  
+
   newCloseBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     e.preventDefault();
@@ -369,14 +389,14 @@ function updateFloatingCardContent(iso, name, sdgList, year, data) {
   // 重新绑定 Add 按钮事件
   const newAddBtn = addBtn.cloneNode(true);
   addBtn.parentNode.replaceChild(newAddBtn, addBtn);
-  
+
   newAddBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     e.preventDefault();
-    
+
     if (!newAddBtn.disabled && sdgList.length > 0 && hasAvailableSpace()) {
       addNoteToStaff(name, sdgList, iso);
-      
+
       // 再次更新按钮状态
       const stillHasSpace = hasAvailableSpace();
       if (!stillHasSpace) {
@@ -394,43 +414,43 @@ function updateFloatingCardContent(iso, name, sdgList, year, data) {
 function positionFloatingCardAtPoint(point) {
   const card = ensureFloatingCard();
   const mapRect = document.getElementById("map").getBoundingClientRect();
-  
+
   // 计算初始位置
   let x = point.x + mapRect.left;
   let y = point.y + mapRect.top;
-  
+
   // 先设置位置以获取卡片尺寸
   card.style.position = "absolute";
   card.style.left = `${x}px`;
   card.style.top = `${y}px`;
   card.style.transform = "translate(-20px, -20px)";
   card.classList.remove("hidden");
-  
+
   // 获取卡片和视口尺寸
   const cardRect = card.getBoundingClientRect();
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  
+
   // 检查右侧溢出
   if (cardRect.right > viewportWidth) {
     x = viewportWidth - cardRect.width - 20; // 左移，留20px边距
   }
-  
+
   // 检查左侧溢出
   if (cardRect.left < 0) {
     x = 20; // 右移，留20px边距
   }
-  
+
   // 检查底部溢出
   if (cardRect.bottom > viewportHeight) {
     y = viewportHeight - cardRect.height - 20; // 上移，留20px边距
   }
-  
+
   // 检查顶部溢出
   if (cardRect.top < 60) { // 60px 是 header 高度
     y = 80; // 下移到 header 下方
   }
-  
+
   // 应用调整后的位置
   card.style.left = `${x}px`;
   card.style.top = `${y}px`;
@@ -447,41 +467,41 @@ function createQuarterNote(sdg, color, value) {
   noteDiv.className = "quarter-note chord-note";
   noteDiv.dataset.sdg = String(sdg);
   noteDiv.dataset.value = value;
-  
+
   // 🎵 应用音高位置
   const noteInfo = valueToNote(value);
   noteDiv.classList.add(noteInfo.positionClass);
-  
+
   // 如果是 C (0-10)，添加下加线
   if (noteInfo.needsLedgerLine === 'below') {
     const ledgerLine = document.createElement('div');
     ledgerLine.className = 'ledger-line-below ledger-line-c';
     noteDiv.appendChild(ledgerLine);
   }
-  
+
   const noteHead = document.createElement("div");
   noteHead.className = "note-head";
   noteHead.style.backgroundColor = color;
   noteHead.style.color = color;
-  
+
   const noteStem = document.createElement("div");
   noteStem.className = "note-stem";
   noteStem.style.backgroundColor = color;
-  
+
   noteDiv.appendChild(noteHead);
   noteDiv.appendChild(noteStem);
-  
+
   // 设置提示信息
   noteDiv.title = `SDG ${sdg}- Value:${value} (${noteInfo.fullNoteName})`;
 
-  
+
   return noteDiv;
 }
 
 // ------------------- 添加音符到五线谱 -------------------
 function addNoteToStaff(countryName, sdgList, iso) {
   const nextPos = getNextAvailablePosition();
-  
+
   if (nextPos === null) {
     showMessage("Staff is full! Maximum 8 notes allowed.");
     return;
@@ -489,7 +509,7 @@ function addNoteToStaff(countryName, sdgList, iso) {
 
   const container = document.getElementById("treble-container");
   const placeholder = container.querySelector(`.note-placeholder[data-position="${nextPos}"]`);
-  
+
   if (!placeholder) {
     console.warn("位置不存在");
     return;
@@ -504,7 +524,7 @@ function addNoteToStaff(countryName, sdgList, iso) {
   noteGroup.dataset.iso = iso;
   noteGroup.dataset.position = nextPos;
   noteGroup.title = `${countryName} - SDG ${sdgList.join(', ')}`;
-  
+
   // 创建删除按钮
   const deleteBtn = document.createElement("button");
   deleteBtn.className = "delete-note-btn";
@@ -518,12 +538,12 @@ function addNoteToStaff(countryName, sdgList, iso) {
   // 🎵 先检查所有 SDG 是否都有值
   const allValues = sdgList.map(sdg => getSDGValue(sdgData, iso, year, sdg));
   const hasAnyValue = allValues.some(val => val !== null);
-  
+
   // 根据 SDG 数量创建单音符或和弦
   // 统一使用 .chord 容器以保持定位上下文一致
   const chord = document.createElement("div");
   chord.className = "chord";
-  
+
   if (!hasAnyValue) {
     //  所有 SDG 都没有值 - 显示休止符
     const restSymbol = document.createElement("div");
@@ -552,10 +572,10 @@ function addNoteToStaff(countryName, sdgList, iso) {
       color: sdgColors[sdg] || "#667eea"
     })).filter(data => data.value !== null); // 过滤掉没有数据的
 
-    
+
     // 按值排序（从低到高）
     notesData.sort((a, b) => a.value - b.value);
-    
+
     //  检测相同音高的音符并分组
     const valueGroups = {};
     notesData.forEach(data => {
@@ -563,10 +583,10 @@ function addNoteToStaff(countryName, sdgList, iso) {
       if (!valueGroups[key]) valueGroups[key] = [];
       valueGroups[key].push(data);
     });
-    
+
     notesData.forEach(data => {
       const note = createQuarterNote(data.sdg, data.color, data.value);
-      
+
       //  如果同一音高有多个音符，左右对称错开显示
       const key = Math.floor(data.value / 10) * 10;
       const group = valueGroups[key];
@@ -574,11 +594,11 @@ function addNoteToStaff(countryName, sdgList, iso) {
         //  重叠显示但设置透明度，让用户能看出重叠
         note.style.opacity = '0.7';
       }
-      
+
       chord.appendChild(note);
     });
   }
-  
+
   noteGroup.appendChild(chord);
 
   // 添加国家标签
@@ -591,7 +611,7 @@ function addNoteToStaff(countryName, sdgList, iso) {
   noteGroup.addEventListener("click", (e) => {
     // 如果点击的是删除按钮，不播放声音
     if (e.target.classList.contains('delete-note-btn')) return;
-    
+
     // 获取所有音符数据
     const notes = noteGroup.querySelectorAll('.chord-note[data-value]');
     const notesData = Array.from(notes)
@@ -600,7 +620,7 @@ function addNoteToStaff(countryName, sdgList, iso) {
         sdg: n.dataset.sdg
       }))
       .filter(n => !isNaN(n.value));
-    
+
     if (notesData.length === 1) {
       // 单音符
       playValueNote(notesData[0].value, notesData[0].sdg, 0.4);
@@ -608,7 +628,7 @@ function addNoteToStaff(countryName, sdgList, iso) {
       // 和弦
       playValueChord(notesData, 0.4);
     }
-    
+
     // 视觉反馈：短暂闪烁
     noteGroup.style.transform = 'scale(1.1)';
     setTimeout(() => {
@@ -624,7 +644,7 @@ function addNoteToStaff(countryName, sdgList, iso) {
     iso: iso,
     sdgs: sdgList
   });
-  
+
   showMessage(` Added ${countryName} to staff!`);
   console.log(` 添加音符: ${countryName} (${sdgList.length} SDG${sdgList.length > 1 ? 's' : ''}) 在位置 ${nextPos}`);
   console.log(` 当前占用: ${notePositions.length}/8`);
@@ -633,27 +653,27 @@ function addNoteToStaff(countryName, sdgList, iso) {
 // ------------------- 删除音符 -------------------
 function removeNoteFromStaff(noteGroup) {
   const actualPosition = parseInt(noteGroup.dataset.position);
-  
+
   // 创建占位符（不显示数字）
   const placeholder = document.createElement("div");
   placeholder.className = "note-placeholder";
   placeholder.dataset.position = actualPosition;
-  
+
   // 替换音符组
   noteGroup.replaceWith(placeholder);
-  
+
   // 从数组中移除
   notePositions = notePositions.filter(n => n.position !== actualPosition);
-  
+
   console.log(`删除音符位置 ${actualPosition}`);
   console.log(`当前占用: ${notePositions.length}/8`);
-  
+
   //  更新卡片按钮状态
   if (currentSelectedIso && currentSelectedName) {
     const year = getCurrentYear();
     updateFloatingCardContent(currentSelectedIso, currentSelectedName, getSelectedSDGs(), year, sdgData);
   }
-  
+
   showMessage(`Removed note from position ${actualPosition}`);
 }
 
@@ -666,12 +686,12 @@ const mainArea = document.getElementById("main");
 startComposeBtn.addEventListener("click", () => {
   composerArea.classList.remove("hidden");
   mainArea.classList.add("composer-open");
-  
+
   if (currentSelectedIso && currentSelectedName) {
     const year = getCurrentYear();
     updateFloatingCardContent(currentSelectedIso, currentSelectedName, getSelectedSDGs(), year, sdgData);
   }
-  
+
   setTimeout(() => {
     map.resize();
     console.log(" 地图大小已调整 (Composer 打开)");
@@ -681,12 +701,12 @@ startComposeBtn.addEventListener("click", () => {
 closeComposeBtn.addEventListener("click", () => {
   composerArea.classList.add("hidden");
   mainArea.classList.remove("composer-open");
-  
+
   if (currentSelectedIso && currentSelectedName) {
     const year = getCurrentYear();
     updateFloatingCardContent(currentSelectedIso, currentSelectedName, getSelectedSDGs(), year, sdgData);
   }
-  
+
   setTimeout(() => {
     map.resize();
     console.log(" 地图大小已调整 (Composer 关闭)");
@@ -738,26 +758,24 @@ map.on("click", e => {
 // ------------------- Play Melody 播放功能 -------------------
 document.getElementById("play-melody").addEventListener("click", () => {
   const noteGroups = document.querySelectorAll('.note-group');
-  
+
   if (noteGroups.length === 0) {
     showMessage("No notes to play!");
     return;
   }
-  
-  //  预热音频上下文（解决第一个音符丢失问题）
-  warmupAudioContext();
-  
+
+
   // 获取tempo值（BPM - Beats Per Minute）
   const tempoInput = document.getElementById("tempo-input");
   const tempo = parseInt(tempoInput.value) || 86; // 默认86 BPM
-  
+
   // 计算每个四分音符的持续时间（毫秒）
   // 60秒 / BPM = 每拍秒数，再转换为毫秒
   const beatDuration = (60 / tempo) * 1000; // 毫秒
   const noteDuration = beatDuration / 1000; // 转换为秒，用于音符播放时长
-  
+
   showMessage(`Playing melody at ${tempo} BPM...`);
-  
+
   noteGroups.forEach((group, index) => {
     setTimeout(() => {
       const notes = group.querySelectorAll('.chord-note[data-value]');
@@ -767,7 +785,7 @@ document.getElementById("play-melody").addEventListener("click", () => {
           sdg: n.dataset.sdg
         }))
         .filter(n => !isNaN(n.value));
-      
+
       if (notesData.length === 1) {
         // 单音符
         playValueNote(notesData[0].value, notesData[0].sdg, noteDuration);
@@ -775,7 +793,7 @@ document.getElementById("play-melody").addEventListener("click", () => {
         // 和弦
         playValueChord(notesData, noteDuration);
       }
-    }, index * beatDuration + 100); // 所有音符统一延迟100ms
+    }, index * beatDuration); // 移除了额外的延迟
   });
 });
 
@@ -787,11 +805,11 @@ document.getElementById("clear-all").addEventListener("click", () => {
     currentSelectedName = null;
   }
   hideFloatingCard();
-  
+
   // 清空五线谱
   const container = document.getElementById("treble-container");
   container.innerHTML = "";
-  
+
   // 重新添加占位符（不显示数字）
   for (let i = 1; i <= 8; i++) {
     const placeholder = document.createElement("div");
@@ -799,9 +817,9 @@ document.getElementById("clear-all").addEventListener("click", () => {
     placeholder.dataset.position = i;
     container.appendChild(placeholder);
   }
-  
+
   notePositions = [];
-  
+
   console.log(" 清空所有选择和音符");
   console.log(` 当前占用: 0/8`);
 });
@@ -809,17 +827,17 @@ document.getElementById("clear-all").addEventListener("click", () => {
 // ------------------- Shuffle 随机打乱 -------------------
 document.getElementById("shuffle-notes").addEventListener("click", () => {
   const noteGroups = document.querySelectorAll('.note-group');
-  
+
   if (noteGroups.length === 0) {
     showMessage("No notes to shuffle!");
     return;
   }
-  
+
   if (noteGroups.length === 1) {
     showMessage("Need at least 2 notes to shuffle!");
     return;
   }
-  
+
   //  Fisher-Yates 随机打乱算法
   const shuffleArray = (array) => {
     const newArray = [...array];
@@ -829,41 +847,41 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
     }
     return newArray;
   };
-  
+
   // 保存当前音符数据
   const currentNotes = notePositions.map(notePos => ({
     ...notePos
   }));
-  
+
   // 随机打乱音符数据
   const shuffledNotes = shuffleArray(currentNotes);
-  
+
   const container = document.getElementById("treble-container");
-  
+
   // 添加淡出动画
   container.style.transition = "opacity 0.3s ease";
   container.style.opacity = "0";
-  
+
   setTimeout(() => {
     // 清空容器
     container.innerHTML = "";
-    
+
     // 重新创建所有位置（1-8）
-    const allPositions = Array.from({length: 8}, (_, i) => i + 1);
-    
+    const allPositions = Array.from({ length: 8 }, (_, i) => i + 1);
+
     allPositions.forEach(position => {
       const shuffledIndex = position - 1;
-      
+
       if (shuffledIndex < shuffledNotes.length) {
         // 这个位置有音符 - 重新创建音符
         const noteData = shuffledNotes[shuffledIndex];
         const year = getCurrentYear();
-        
+
         // 创建新的音符组
         const noteGroup = document.createElement("div");
         noteGroup.className = "note-group";
         noteGroup.dataset.position = position;
-        
+
         // 添加删除按钮
         const deleteBtn = document.createElement("button");
         deleteBtn.className = "delete-note-btn";
@@ -873,15 +891,15 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
           removeNoteFromStaff(noteGroup);
         });
         noteGroup.appendChild(deleteBtn);
-        
+
         // 创建和弦容器
         const chord = document.createElement("div");
         chord.className = "chord";
-        
+
         // 🎵 先检查所有 SDG 是否都有值
         const allValues = noteData.sdgs.map(sdg => getSDGValue(sdgData, noteData.iso, year, sdg));
         const hasAnyValue = allValues.some(val => val !== null);
-        
+
         if (!hasAnyValue) {
           // 🎵 所有 SDG 都没有值 - 显示休止符
           const restSymbol = document.createElement("div");
@@ -908,16 +926,16 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
             value: getSDGValue(sdgData, noteData.iso, year, sdg),
             color: sdgColors[sdg] || "#667eea"
           })).filter(data => data.value !== null);
-          
+
           notesData.sort((a, b) => a.value - b.value);
-          
+
           const valueGroups = {};
           notesData.forEach(data => {
             const key = Math.floor(data.value / 10) * 10;
             if (!valueGroups[key]) valueGroups[key] = [];
             valueGroups[key].push(data);
           });
-          
+
           notesData.forEach(data => {
             const note = createQuarterNote(data.sdg, data.color, data.value);
             const key = Math.floor(data.value / 10) * 10;
@@ -930,17 +948,17 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
         }
 
         noteGroup.appendChild(chord);
-        
+
         // 添加国家标签
         const label = document.createElement("div");
         label.className = "note-label";
         label.textContent = noteData.country;
         noteGroup.appendChild(label);
-        
+
         // 添加点击播放功能
         noteGroup.addEventListener("click", (e) => {
           if (e.target.classList.contains('delete-note-btn')) return;
-          
+
           const notes = noteGroup.querySelectorAll('.chord-note[data-value]');
           const notesData = Array.from(notes)
             .map(n => ({
@@ -948,21 +966,21 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
               sdg: n.dataset.sdg
             }))
             .filter(n => !isNaN(n.value));
-          
+
           if (notesData.length === 1) {
             playValueNote(notesData[0].value, notesData[0].sdg, 0.4);
           } else if (notesData.length > 1) {
             playValueChord(notesData, 0.4);
           }
-          
+
           noteGroup.style.transform = 'scale(1.1)';
           setTimeout(() => {
             noteGroup.style.transform = '';
           }, 100);
         });
-        
+
         container.appendChild(noteGroup);
-        
+
       } else {
         // 这个位置是空的 - 添加占位符
         const placeholder = document.createElement("div");
@@ -971,7 +989,7 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
         container.appendChild(placeholder);
       }
     });
-    
+
     // 更新 notePositions 数组
     notePositions = shuffledNotes.map((noteData, index) => ({
       position: index + 1,
@@ -979,40 +997,261 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
       iso: noteData.iso,
       sdgs: noteData.sdgs
     }));
-    
+
     // 淡入动画
     container.style.opacity = "1";
-    
+
     showMessage("🔀 Notes shuffled!");
     console.log("🔀 音符已随机打乱");
     console.log("新顺序:", notePositions.map(n => n.country).join(", "));
-    
+
   }, 300);
 });
 
 
 // ------------------- 初始化 -------------------
 renderSDGCheckboxes();
+updateKeySignature(); // 初始化调号显示
 console.log("🌍 SDG Map Ready with Smart Position Management and Note Mapping!");
 
 // ------------------- Tempo 输入验证 -------------------
 const tempoInput = document.getElementById("tempo-input");
 if (tempoInput) {
-  tempoInput.addEventListener("input", () => {
+  // 当输入框失去焦点或按下回车时验证
+  const validateTempo = () => {
     let value = parseInt(tempoInput.value);
-    
+
+    // 如果输入为空或无效,设为默认值
+    if (isNaN(value) || tempoInput.value === '') {
+      tempoInput.value = 86;
+      return;
+    }
+
     // 限制在40-240之间
     if (value < 40) {
       tempoInput.value = 40;
+
     } else if (value > 240) {
       tempoInput.value = 240;
+
     }
-  });
-  
-  // 防止输入非数字
+  };
+
+  tempoInput.addEventListener("blur", validateTempo);
+
   tempoInput.addEventListener("keypress", (e) => {
-    if (!/[0-9]/.test(e.key)) {
+    // 允许数字和回车键
+    if (e.key === 'Enter') {
+      validateTempo();
+      tempoInput.blur();
+    } else if (!/[0-9]/.test(e.key)) {
       e.preventDefault();
     }
   });
+}
+
+
+// ------------------- 调式切换按钮 -------------------
+
+// ------------------- 更新调号显示 -------------------
+function updateKeySignature() {
+  const keySignatureContainer = document.getElementById("key-signature");
+  if (!keySignatureContainer) return;
+
+  const currentMode = getMode();
+
+  // 清空现有调号
+  keySignatureContainer.innerHTML = "";
+
+  if (currentMode === 'minor') {
+    // C小调：显示三个降号（B♭, E♭, A♭）
+    // 位置：第三线(B), 第五线(E), 第四间(A)
+    const flats = [
+      { line: 3, note: 'B' },  // B♭ 在第三线
+      { line: 5, note: 'E' },  // E♭ 在第五线  
+      { line: 4, note: 'A', isSpace: true }   // A♭ 在第四间
+    ];
+
+    flats.forEach((flat, index) => {
+      const flatSymbol = document.createElement("div");
+      flatSymbol.className = `key-flat key-flat-${index + 1}`;
+      flatSymbol.innerHTML = "♭";
+      flatSymbol.dataset.line = flat.line;
+      flatSymbol.dataset.note = flat.note;
+      if (flat.isSpace) {
+        flatSymbol.classList.add('is-space');
+      }
+      keySignatureContainer.appendChild(flatSymbol);
+    });
+  }
+  // 大调模式：不显示调号（C大调无升降号）
+
+  console.log(`🎼 调号已更新: ${currentMode === 'major' ? 'C大调 (无升降号)' : 'C小调 (三个降号)'}`);
+}
+
+const modeToggleBtn = document.getElementById("mode-toggle");
+
+if (modeToggleBtn) {
+  modeToggleBtn.addEventListener("click", () => {
+    // 获取当前调式
+    const currentMode = modeToggleBtn.dataset.mode;
+
+    if (currentMode === "major") {
+      // 切换到小调
+      setMode("minor");
+      modeToggleBtn.dataset.mode = "minor";
+      modeToggleBtn.textContent = "Minor Scale";
+      showMessage("Switched to C Minor Scale");
+    } else {
+      // 切换到大调
+      setMode("major");
+      modeToggleBtn.dataset.mode = "major";
+      modeToggleBtn.textContent = "Major Scale";
+      showMessage("Switched to C Major Scale");
+    }
+
+    // 刷新五线谱上的所有音符
+    refreshAllNotes();
+    updateKeySignature();
+  });
+}
+
+
+/**
+ * 刷新五线谱上的所有音符（调式切换时使用）
+ */
+function refreshAllNotes() {
+  const container = document.getElementById("treble-container");
+  const year = getCurrentYear();
+
+  // 保存当前所有音符的数据
+  const savedNotes = notePositions.map(notePos => ({ ...notePos }));
+
+  // 清空容器
+  container.innerHTML = "";
+
+  // 重新创建所有位置
+  const allPositions = Array.from({ length: 8 }, (_, i) => i + 1);
+
+  allPositions.forEach(position => {
+    const noteIndex = position - 1;
+
+    if (noteIndex < savedNotes.length) {
+      // 这个位置有音符 - 使用新调式重新创建
+      const noteData = savedNotes[noteIndex];
+
+      // 创建新的音符组
+      const noteGroup = document.createElement("div");
+      noteGroup.className = "note-group";
+      noteGroup.dataset.position = position;
+
+      // 添加删除按钮
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "delete-note-btn";
+      deleteBtn.textContent = "×";
+      deleteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        removeNoteFromStaff(noteGroup);
+      });
+      noteGroup.appendChild(deleteBtn);
+
+      // 创建和弦容器
+      const chord = document.createElement("div");
+      chord.className = "chord";
+
+      // 检查所有 SDG 是否都有值
+      const allValues = noteData.sdgs.map(sdg => getSDGValue(sdgData, noteData.iso, year, sdg));
+      const hasAnyValue = allValues.some(val => val !== null);
+
+      if (!hasAnyValue) {
+        // 所有 SDG 都没有值 - 显示休止符
+        const restSymbol = document.createElement("div");
+        restSymbol.className = "rest-symbol";
+        restSymbol.innerHTML = "𝄽";
+        restSymbol.style.fontSize = "32px";
+        restSymbol.style.color = "#868e96";
+        restSymbol.style.position = "relative";
+        restSymbol.style.top = "30px";
+        restSymbol.dataset.isRest = "true";
+        chord.appendChild(restSymbol);
+      } else if (noteData.sdgs.length === 1) {
+        // 单个音符
+        const sdg = noteData.sdgs[0];
+        const value = getSDGValue(sdgData, noteData.iso, year, sdg);
+        if (value !== null) {
+          const note = createQuarterNote(sdg, sdgColors[sdg] || "#667eea", value);
+          chord.appendChild(note);
+        }
+      } else {
+        // 和弦
+        const notesData = noteData.sdgs.map(sdg => ({
+          sdg,
+          value: getSDGValue(sdgData, noteData.iso, year, sdg),
+          color: sdgColors[sdg] || "#667eea"
+        })).filter(data => data.value !== null);
+
+        notesData.sort((a, b) => a.value - b.value);
+
+        const valueGroups = {};
+        notesData.forEach(data => {
+          const key = Math.floor(data.value / 10) * 10;
+          if (!valueGroups[key]) valueGroups[key] = [];
+          valueGroups[key].push(data);
+        });
+
+        notesData.forEach(data => {
+          const note = createQuarterNote(data.sdg, data.color, data.value);
+          const key = Math.floor(data.value / 10) * 10;
+          const group = valueGroups[key];
+          if (group.length > 1) {
+            note.style.opacity = '0.7';
+          }
+          chord.appendChild(note);
+        });
+      }
+
+      noteGroup.appendChild(chord);
+
+      // 添加国家标签
+      const label = document.createElement("div");
+      label.className = "note-label";
+      label.textContent = noteData.country;
+      noteGroup.appendChild(label);
+
+      // 添加点击播放功能
+      noteGroup.addEventListener("click", (e) => {
+        if (e.target.classList.contains('delete-note-btn')) return;
+
+        const notes = noteGroup.querySelectorAll('.chord-note[data-value]');
+        const notesData = Array.from(notes)
+          .map(n => ({
+            value: parseFloat(n.dataset.value),
+            sdg: n.dataset.sdg
+          }))
+          .filter(n => !isNaN(n.value));
+
+        if (notesData.length === 1) {
+          playValueNote(notesData[0].value, notesData[0].sdg, 0.4);
+        } else if (notesData.length > 1) {
+          playValueChord(notesData, 0.4);
+        }
+
+        noteGroup.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+          noteGroup.style.transform = '';
+        }, 100);
+      });
+
+      container.appendChild(noteGroup);
+
+    } else {
+      // 这个位置是空的 - 添加占位符
+      const placeholder = document.createElement("div");
+      placeholder.className = "note-placeholder";
+      placeholder.dataset.position = position;
+      container.appendChild(placeholder);
+    }
+  });
+
+  console.log(`🎼 音符已刷新为 ${getMode() === 'major' ? 'C大调' : 'C小调'}`);
 }

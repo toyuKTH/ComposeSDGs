@@ -61,7 +61,10 @@
       <label class="tempo-label">Tempo</label>
       <input id="tempo-input" type="number" min="40" max="240" value="86" class="tempo-input">
       <span class="tempo-unit">BPM</span>
-
+      <!-- 调式切换按钮组 -->
+      <button id="mode-toggle" class="mode-toggle-btn" data-mode="major">
+        Major Scale
+      </button>
 
       <button id="close-compose-btn" class="close-compose-btn"> ✕ </button>
     </div>
@@ -79,10 +82,13 @@
         <!-- 高音谱号 -->
         <div class="treble_clef">𝄞</div>
 
+        <!-- 调号容器 -->
+        <div class="key-signature" id="key-signature"></div>
+
         <!-- 小节分界线 -->
-        <div class="bar-line start"></div>
+        <!-- <div class="bar-line start"></div>
         <div class="bar-line first"></div>
-        <div class="bar-line second"></div>
+        <div class="bar-line second"></div> -->
 
         <!-- 音符容器 - 8个占位符 -->
         <div class="note-container" id="treble-container">

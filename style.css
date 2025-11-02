@@ -98,8 +98,8 @@ body {
 }
 
 #sdg_checkbox_list label:hover {
+  background-color: #e9ecef;
 }
-
 /* ========== Start Compose 按钮 ========== */
 #start-compose-btn {
   margin-top: 24px;
@@ -155,7 +155,7 @@ body {
   color: #2c3e50;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   height: 35px;
-  backdrop-filter: blur(10px);
+  /* backdrop-filter: blur(10px); */
 }
 
 .year-title {
@@ -247,7 +247,7 @@ body {
 
 #floating-info-card .sdg-item {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 40px; /* 四列布局 */
   gap: 8px;
   padding: 10px 0;
   border-bottom: 1px solid #f1f3f5;
@@ -419,8 +419,8 @@ body {
 /* ========== 高音谱号 ========== */
 .treble_clef {
   position: absolute;
-  left: 38px;
-  font-size: 80px;
+  left: 30px;
+  font-size: 70px;
   font-family: serif;
   z-index: 3;
   color: #2c3e50;
@@ -701,3 +701,80 @@ body {
   font-weight: 500;
   margin-left: 4px;
 }
+
+.mode-toggle-btn {
+  padding: 8px 18px;
+  border: 2px solid #667eea;
+  background: #667eea;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  margin: 0 12px;
+}
+
+.mode-toggle-btn:hover {
+  background: #5568d3;
+  border-color: #5568d3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.mode-toggle-btn:active {
+  transform: translateY(0);
+}
+
+/* 小调状态 */
+.mode-toggle-btn[data-mode="minor"] {
+  background: #709dc5!important;
+  border-color: #6c757d;
+}
+
+.mode-toggle-btn[data-mode="minor"]:hover {
+  background: #5a6268;
+  border-color: #5a6268;
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+}
+
+/* ========== 调号样式 (Key Signature) ========== */
+.key-signature {
+  position: absolute;
+  left: 70px;  /* 高音谱号后面 */
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  z-index: 3;
+}
+
+.key-flat {
+  position: relative;
+  font-size: 25px;
+  font-weight: bold;
+  color: #495057;
+  font-family: "Times New Roman", serif;
+  line-height: 1;
+}
+
+/* 第一个降号 B♭ - 第三线 */
+.key-flat-1 {
+  top: -16px;
+}
+
+/* 第二个降号 E♭ - 第五线（最下面） */
+.key-flat-2 {
+  top: -10px;
+  position: relative;
+  right: 5px;
+}
+
+/* 第三个降号 A♭ - 第四间 */
+.key-flat-3 {
+  top: -34px;
+  position: relative;
+  right: 40px;
+}
+
