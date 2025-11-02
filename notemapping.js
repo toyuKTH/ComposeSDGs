@@ -216,32 +216,31 @@ export function isHarmonic(value1, value2) {
  */
 const SDG_TIMBRES = {
   // ===== 1. 纯正基音（干净、中性） =====
-'1': {
-  name: 'Base Tone',
-  oscillatorType: 'sine',
-  harmonics: [1, 0.6, 0.4, 0.2],
-    attack: 0.05,                   // 稍慢起音
+  '1': {
+    name: 'Pure Sine',
+    oscillatorType: 'sine',
+    harmonics: [1, 0.3, 0.1],
+    attack: 0.05,
     decay: 0.1,
     sustain: 0.9,
     release: 0.3,
     filterType: 'lowpass',
-    filterFrequency: 800,           // 压暗高频，强调低沉
-    gain: 0.95,
-    description: '低沉厚重的底音'
-},
-
+    filterFrequency: 1200,
+    gain: 0.9,
+    description: '纯净正弦波，干净中性'
+  },
 
   // ===== 2. 粗糙明亮（带能量） =====
   '2': {
     name: 'Bright Saw',
-    oscillatorType: 'sawtooth',     // 明亮锯齿波
+    oscillatorType: 'sawtooth',
     harmonics: [1, 0.5, 0.3, 0.15],
     attack: 0.02,
     decay: 0.12,
     sustain: 0.7,
     release: 0.25,
     filterType: 'highpass',
-    filterFrequency: 1500,          // 强化高频
+    filterFrequency: 1500,
     gain: 0.85,
     description: '明亮粗糙的锯齿音'
   },
@@ -249,14 +248,14 @@ const SDG_TIMBRES = {
   // ===== 3. 金属锐利（电子风） =====
   '3': {
     name: 'Metal Edge',
-    oscillatorType: 'square',       // 带方波边缘
+    oscillatorType: 'square',
     harmonics: [1, 0.4, 0.2, 0.1],
     attack: 0.005,
     decay: 0.15,
     sustain: 0.6,
     release: 0.2,
     filterType: 'bandpass',
-    filterFrequency: 2500,          // 聚焦中高频
+    filterFrequency: 2500,
     gain: 0.9,
     description: '锐利金属方波'
   },
@@ -264,12 +263,12 @@ const SDG_TIMBRES = {
   // ===== 4. 短促打击（清脆瞬态） =====
   '4': {
     name: 'Perc Click',
-    oscillatorType: 'triangle',     // 柔中带锐
+    oscillatorType: 'triangle',
     harmonics: [1, 0.3, 0.15],
-    attack: 0.001,                  // 瞬发
+    attack: 0.001,
     decay: 0.1,
     sustain: 0.1,
-    release: 0.05,                  // 短尾
+    release: 0.05,
     filterType: 'highpass',
     filterFrequency: 2000,
     gain: 0.9,
@@ -279,31 +278,197 @@ const SDG_TIMBRES = {
   // ===== 5. 厚重低沉（包裹感强） =====
   '5': {
     name: 'Deep Bass',
-    oscillatorType: 'sawtooth',     // 锯齿带低频能量
+    oscillatorType: 'sawtooth',
     harmonics: [1, 0.6, 0.4, 0.2],
-    attack: 0.05,                   // 稍慢起音
+    attack: 0.05,
     decay: 0.1,
     sustain: 0.9,
     release: 0.3,
     filterType: 'lowpass',
-    filterFrequency: 800,           // 压暗高频，强调低沉
+    filterFrequency: 800,
     gain: 0.95,
     description: '低沉厚重的底音'
   },
 
-  // ===== 6–17 占位 =====
-  '6': { name: '', description: '' },
-  '7': { name: '', description: '' },
-  '8': { name: '', description: '' },
-  '9': { name: '', description: '' },
-  '10': { name: '', description: '' },
-  '11': { name: '', description: '' },
-  '12': { name: '', description: '' },
-  '13': { name: '', description: '' },
-  '14': { name: '', description: '' },
-  '15': { name: '', description: '' },
-  '16': { name: '', description: '' },
-  '17': { name: '', description: '' },
+  // ===== 6. 温暖柔和（氛围感） =====
+  '6': {
+    name: 'Warm Pad',
+    oscillatorType: 'sine',
+    harmonics: [1, 0.2, 0.1, 0.05],
+    attack: 0.3,
+    decay: 0.4,
+    sustain: 0.8,
+    release: 1.0,
+    filterType: 'lowpass',
+    filterFrequency: 600,
+    gain: 0.8,
+    description: '温暖柔和的长音氛围'
+  },
+
+  // ===== 7. 尖锐噪声（冲击感） =====
+  '7': {
+    name: 'Noise Hit',
+    oscillatorType: 'sawtooth',
+    harmonics: [1, 0.8, 0.6, 0.4, 0.3],
+    attack: 0.001,
+    decay: 0.05,
+    sustain: 0.0,
+    release: 0.1,
+    filterType: 'highpass',
+    filterFrequency: 3000,
+    gain: 0.7,
+    description: '尖锐的噪声冲击音'
+  },
+
+  // ===== 8. 复古芯片（8-bit风） =====
+  '8': {
+    name: 'Chip Tune',
+    oscillatorType: 'square',
+    harmonics: [1, 0.1],
+    attack: 0.01,
+    decay: 0.05,
+    sustain: 0.9,
+    release: 0.1,
+    filterType: 'bandpass',
+    filterFrequency: 1800,
+    gain: 0.85,
+    description: '复古游戏芯片音色'
+  },
+
+  // ===== 9. 弹性合成（弹跳感） =====
+  '9': {
+    name: 'Bouncy Synth',
+    oscillatorType: 'triangle',
+    harmonics: [1, 0.4, 0.2],
+    attack: 0.02,
+    decay: 0.2,
+    sustain: 0.3,
+    release: 0.15,
+    filterType: 'lowpass',
+    filterFrequency: 1500,
+    gain: 0.9,
+    description: '弹性跳跃的合成音'
+  },
+
+  // ===== 10. 金属共鸣（钟声感） =====
+  '10': {
+    name: 'Metal Resonant',
+    oscillatorType: 'sawtooth',
+    harmonics: [1, 0.3, 0.6, 0.4, 0.2],
+    attack: 0.1,
+    decay: 0.8,
+    sustain: 0.2,
+    release: 1.5,
+    filterType: 'bandpass',
+    filterFrequency: 1200,
+    gain: 0.75,
+    description: '金属共鸣钟声效果'
+  },
+
+  // ===== 11. 水下模糊（朦胧感） =====
+  '11': {
+    name: 'Underwater',
+    oscillatorType: 'sine',
+    harmonics: [1, 0.15, 0.3, 0.1],
+    attack: 0.2,
+    decay: 0.3,
+    sustain: 0.7,
+    release: 0.8,
+    filterType: 'lowpass',
+    filterFrequency: 400,
+    gain: 0.8,
+    description: '水下朦胧模糊音色'
+  },
+
+  // ===== 12. 脉冲节奏（规律感） =====
+  '12': {
+    name: 'Pulse Rhythm',
+    oscillatorType: 'square',
+    harmonics: [1, 0.5],
+    attack: 0.005,
+    decay: 0.08,
+    sustain: 0.1,
+    release: 0.05,
+    filterType: 'highpass',
+    filterFrequency: 1000,
+    gain: 0.9,
+    description: '脉冲节奏型音色'
+  },
+
+  // ===== 13. 风声氛围（自然感） =====
+  '13': {
+    name: 'Wind Atmosphere',
+    oscillatorType: 'sawtooth',
+    harmonics: [1, 0.1, 0.05, 0.02],
+    attack: 0.5,
+    decay: 1.0,
+    sustain: 0.3,
+    release: 2.0,
+    filterType: 'lowpass',
+    filterFrequency: 800,
+    gain: 0.6,
+    description: '风声般的氛围音效'
+  },
+
+  // ===== 14. 数字故障（Glitch感） =====
+  '14': {
+    name: 'Digital Glitch',
+    oscillatorType: 'square',
+    harmonics: [1, 0.7, 0.5, 0.3, 0.1],
+    attack: 0.001,
+    decay: 0.02,
+    sustain: 0.0,
+    release: 0.01,
+    filterType: 'highpass',
+    filterFrequency: 2500,
+    gain: 0.8,
+    description: '数字故障干扰音'
+  },
+
+  // ===== 15. 柔和铃音（梦幻感） =====
+  '15': {
+    name: 'Soft Bell',
+    oscillatorType: 'triangle',
+    harmonics: [1, 0.6, 0.4, 0.3, 0.2],
+    attack: 0.05,
+    decay: 0.5,
+    sustain: 0.1,
+    release: 1.0,
+    filterType: 'bandpass',
+    filterFrequency: 2000,
+    gain: 0.7,
+    description: '柔和梦幻的铃音'
+  },
+
+  // ===== 16. 工业机械（粗糙感） =====
+  '16': {
+    name: 'Industrial',
+    oscillatorType: 'sawtooth',
+    harmonics: [1, 0.8, 0.6, 0.7, 0.4],
+    attack: 0.01,
+    decay: 0.3,
+    sustain: 0.4,
+    release: 0.4,
+    filterType: 'lowpass',
+    filterFrequency: 900,
+    gain: 0.95,
+    description: '工业机械粗糙音色'
+  },
+
+  // ===== 17. 太空科幻（未来感） =====
+  '17': {
+    name: 'Sci-Fi',
+    oscillatorType: 'sine',
+    harmonics: [1, 0.4, 0.8, 0.3],
+    attack: 0.1,
+    decay: 0.2,
+    sustain: 0.6,
+    release: 0.7,
+    filterType: 'bandpass',
+    filterFrequency: 1500,
+    gain: 0.8,
+    description: '太空科幻未来音色'
+  }
 };
 
 

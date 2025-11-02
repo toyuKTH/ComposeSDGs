@@ -8,7 +8,7 @@ import { valueToNote, playValueNote, playValueChord, setMode, getMode } from './
 setupYearControl(); // 初始化年份控制
 
 // ------------------- 只显示5个SDG -------------------
-const selectedSDGList = [1, 2, 3, 4, 5];
+const selectedSDGList = [1, 6, 7, 10, 15];
 
 // ------------------- 全局状态 -------------------
 let currentSelectedIso = null;
