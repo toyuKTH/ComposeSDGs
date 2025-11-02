@@ -3,7 +3,7 @@
 // ------------------- 导入 -------------------
 import { setupYearControl, getCurrentYear } from './yearControl.js';
 import { sdgColors, sdgNames, getSDGIndicator, formatIndicatorHTML, formatIndicatorText } from './sdgfile.js';
-import { valueToNote, playValueNote, playValueChord, setMode, getMode } from './noteMapping.js';
+import { valueToNote, playValueNote, playValueChord, setMode, getMode } from './notemapping.js';
 
 setupYearControl(); // 初始化年份控制
 
