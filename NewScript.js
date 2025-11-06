@@ -203,6 +203,23 @@ const map = new mapboxgl.Map({
 });
 map.doubleClickZoom.disable();
 
+// 固定高亮层：使用内置 country_boundaries，初始不过滤任何国家
+map.on('load', () => {
+  if (!map.getLayer('highlight-country')) {
+    map.addLayer({
+      id: 'highlight-country',
+      type: 'line',
+      source: 'composite',
+      'source-layer': 'country_boundaries',
+      paint: {
+        'line-color': '#FFC107',
+        'line-width': 2.5
+      },
+      filter: ['==', ['get', 'iso_3166_1_alpha_3'], ''] // 初始不选任何国家
+    });
+  }
+});
+
 // ------------------- 数据加载 -------------------
 let sdgData = {};
 fetch("./data/sdg_fake_data_mapped.json")
@@ -234,35 +251,25 @@ function getSDGValue(data, iso, year, sdg) {
   return typeof value === "number" ? value : null;
 }
 
-// ------------------- 高亮逻辑 -------------------
-function highlightCountry(map, iso, feature) {
-  const layerId = "highlight-" + iso;
-  if (map.getLayer(layerId)) map.removeLayer(layerId);
-  if (map.getSource(layerId)) map.removeSource(layerId);
-
+// ------------------- 高亮逻辑（改为 filter 方式，自动拼接完整国界） -------------------
+function highlightCountry(map, iso /*, feature */) {
   try {
-    map.addSource(layerId, {
-      type: "geojson",
-      data: feature.toJSON ? feature.toJSON() : feature
-    });
-    map.addLayer({
-      id: layerId,
-      type: "line",
-      source: layerId,
-      paint: {
-        "line-color": "#FFC107",
-        "line-width": 2.5
-      }
-    });
+    if (map.getLayer('highlight-country')) {
+      map.setFilter('highlight-country', ['==', ['get', 'iso_3166_1_alpha_3'], iso]);
+    }
   } catch (e) {
-    console.error("添加高亮失败:", e);
+    console.error("设置高亮失败:", e);
   }
 }
 
-function unhighlightCountry(map, iso) {
-  const layerId = "highlight-" + iso;
-  if (map.getLayer(layerId)) map.removeLayer(layerId);
-  if (map.getSource(layerId)) map.removeSource(layerId);
+function unhighlightCountry(map /*, iso */) {
+  try {
+    if (map.getLayer('highlight-country')) {
+      map.setFilter('highlight-country', ['==', ['get', 'iso_3166_1_alpha_3'], '']);
+    }
+  } catch (e) {
+    console.error("取消高亮失败:", e);
+  }
 }
 
 // ------------------- 浮动卡片逻辑 -------------------
@@ -494,7 +501,6 @@ function createQuarterNote(sdg, color, value) {
   // 设置提示信息
   noteDiv.title = `SDG ${sdg}- Value:${value} (${noteInfo.fullNoteName})`;
 
-
   return noteDiv;
 }
 
@@ -571,7 +577,6 @@ function addNoteToStaff(countryName, sdgList, iso) {
       value: getSDGValue(sdgData, iso, year, sdg),
       color: sdgColors[sdg] || "#667eea"
     })).filter(data => data.value !== null); // 过滤掉没有数据的
-
 
     // 按值排序（从低到高）
     notesData.sort((a, b) => a.value - b.value);
@@ -747,10 +752,10 @@ map.on("click", e => {
     unhighlightCountry(map, currentSelectedIso);
   }
 
-  // 高亮当前
+  // 高亮当前（用 filter 方式，一次性拼出完整国界）
   currentSelectedIso = iso;
   currentSelectedName = name;
-  highlightCountry(map, iso, countryFeature);
+  highlightCountry(map, iso /*, countryFeature*/);
   updateFloatingCardContent(iso, name, selectedSDGs, year, sdgData);
   positionFloatingCardAtPoint(e.point);
 });
@@ -763,7 +768,6 @@ document.getElementById("play-melody").addEventListener("click", () => {
     showMessage("No notes to play!");
     return;
   }
-
 
   // 获取tempo值（BPM - Beats Per Minute）
   const tempoInput = document.getElementById("tempo-input");
