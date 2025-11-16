@@ -15,6 +15,10 @@ let currentSelectedIso = null;
 let currentSelectedName = null;
 let notePositions = []; // 存储已添加的音符位置
 
+// ------------------- 播放控制全局变量 -------------------
+let isPlaying = false;
+let playIntervalId = null;
+
 // ------------------- 获取下一个可用位置 -------------------
 function getNextAvailablePosition() {
   // 找出所有已占用的位置
@@ -139,7 +143,7 @@ function renderSDGCheckboxes() {
 
       // 播放中央C的音高 (值 50 对应 G4 在此系统中)
       // 🎵 预热音频上下文
-      console.log("🔘 试听按钮被点击:", { originalSDG: i, convertedSDG: String(i), type: typeof String(i) });
+      console.log(" 试听按钮被点击:", { originalSDG: i, convertedSDG: String(i), type: typeof String(i) });
       playValueNote(5, String(i), 1);
 
       // 视觉反馈：按下动画
@@ -760,28 +764,63 @@ map.on("click", e => {
   positionFloatingCardAtPoint(e.point);
 });
 
-// ------------------- Play Melody 播放功能 -------------------
+// ------------------- Play Melody 播放/停止功能 -------------------
 document.getElementById("play-melody").addEventListener("click", () => {
-  const noteGroups = document.querySelectorAll('.note-group');
-
-  if (noteGroups.length === 0) {
-    showMessage("No notes to play!");
-    return;
+  const playButton = document.getElementById("play-melody");
+  
+  if (isPlaying) {
+    // 停止播放
+    stopPlayback();
+    playButton.textContent = "▶ Play";
+    isPlaying = false;
+  } else {
+    // 开始播放
+    const noteGroups = document.querySelectorAll('.note-group');
+    
+    if (noteGroups.length === 0) {
+      showMessage("No notes to play!");
+      return;
+    }
+    
+    playButton.textContent = "⏹ Stop";
+    isPlaying = true;
+    startLoopPlayback(noteGroups);
   }
+});
 
-  // 获取tempo值（BPM - Beats Per Minute）
+// ------------------- 开始循环播放 -------------------
+function startLoopPlayback(noteGroups) {
   const tempoInput = document.getElementById("tempo-input");
-  const tempo = parseInt(tempoInput.value) || 86; // 默认86 BPM
+  const tempo = parseInt(tempoInput.value) || 86;
+  const beatDuration = (60 / tempo) * 1000;
+  const noteDuration = beatDuration / 1000;
+  
+  // 立即播放一次
+  playMelodyOnce(noteGroups, beatDuration, noteDuration);
+  
+  // 计算整个旋律的总时长
+  const totalDuration = noteGroups.length * beatDuration;
+  
+  // 设置循环
+  playIntervalId = setInterval(() => {
+    if (isPlaying) {
+      playMelodyOnce(noteGroups, beatDuration, noteDuration);
+    }
+  }, totalDuration);
+}
 
-  // 计算每个四分音符的持续时间（毫秒）
-  // 60秒 / BPM = 每拍秒数，再转换为毫秒
-  const beatDuration = (60 / tempo) * 1000; // 毫秒
-  const noteDuration = beatDuration / 1000; // 转换为秒，用于音符播放时长
-
-  showMessage(`Playing melody at ${tempo} BPM...`);
-
+// ------------------- 播放一次完整旋律 -------------------
+function playMelodyOnce(noteGroups, beatDuration, noteDuration) {
+  // 清除所有之前的高亮
+  noteGroups.forEach(g => g.classList.remove('playing'));
+  
   noteGroups.forEach((group, index) => {
     setTimeout(() => {
+      if (!isPlaying) return; // 如果已停止，不再播放
+      
+      // 添加高亮效果
+      highlightNoteGroup(group);
+      
       const notes = group.querySelectorAll('.chord-note[data-value]');
       const notesData = Array.from(notes)
         .map(n => ({
@@ -789,20 +828,62 @@ document.getElementById("play-melody").addEventListener("click", () => {
           sdg: n.dataset.sdg
         }))
         .filter(n => !isNaN(n.value));
-
+      
       if (notesData.length === 1) {
-        // 单音符
         playValueNote(notesData[0].value, notesData[0].sdg, noteDuration);
       } else if (notesData.length > 1) {
-        // 和弦
         playValueChord(notesData, noteDuration);
       }
-    }, index * beatDuration); // 移除了额外的延迟
+      
+      // 音符播放完毕后移除高亮
+      setTimeout(() => {
+        removeHighlightNoteGroup(group);
+      }, beatDuration * 0.9);
+      
+    }, index * beatDuration);
   });
-});
+}
+
+// ------------------- 停止播放 -------------------
+function stopPlayback() {
+  if (playIntervalId) {
+    clearInterval(playIntervalId);
+    playIntervalId = null;
+  }
+  
+  // 清除所有高亮
+  const noteGroups = document.querySelectorAll('.note-group');
+  noteGroups.forEach(g => {
+    g.classList.remove('playing');
+    g.style.transform = '';
+  });
+  
+  showMessage("Playback stopped");
+}
+
+// ------------------- 高亮音符组 -------------------
+function highlightNoteGroup(group) {
+  group.classList.add('playing');
+  group.style.transform = 'scale(1.15)';
+  group.style.transition = 'transform 0.1s ease-out';
+  console.log('Now playing: ' + group.dataset.country);
+}
+
+// ------------------- 移除音符组高亮 -------------------
+function removeHighlightNoteGroup(group) {
+  group.classList.remove('playing');
+  group.style.transform = '';
+}
 
 // ------------------- Clear All -------------------
 document.getElementById("clear-all").addEventListener("click", () => {
+  // 先停止播放
+  if (isPlaying) {
+    stopPlayback();
+    document.getElementById("play-melody").textContent = "▶ Play";
+    isPlaying = false;
+  }
+  
   if (currentSelectedIso) {
     unhighlightCountry(map, currentSelectedIso);
     currentSelectedIso = null;
@@ -840,6 +921,13 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
   if (noteGroups.length === 1) {
     showMessage("Need at least 2 notes to shuffle!");
     return;
+  }
+
+  // 先停止播放
+  if (isPlaying) {
+    stopPlayback();
+    document.getElementById("play-melody").textContent = "▶ Play";
+    isPlaying = false;
   }
 
   //  Fisher-Yates 随机打乱算法
@@ -1005,8 +1093,8 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
     // 淡入动画
     container.style.opacity = "1";
 
-    showMessage("🔀 Notes shuffled!");
-    console.log("🔀 音符已随机打乱");
+    showMessage(" Notes shuffled!");
+    console.log("音符已随机打乱");
     console.log("新顺序:", notePositions.map(n => n.country).join(", "));
 
   }, 300);
@@ -1016,7 +1104,7 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
 // ------------------- 初始化 -------------------
 renderSDGCheckboxes();
 updateKeySignature(); // 初始化调号显示
-console.log("🌍 SDG Map Ready with Smart Position Management and Note Mapping!");
+console.log(" SDG Map Ready with Smart Position Management and Note Mapping!");
 
 // ------------------- Tempo 输入验证 -------------------
 const tempoInput = document.getElementById("tempo-input");
@@ -1090,7 +1178,7 @@ function updateKeySignature() {
   }
   // 大调模式：不显示调号（C大调无升降号）
 
-  console.log(`🎼 调号已更新: ${currentMode === 'major' ? 'C大调 (无升降号)' : 'C小调 (三个降号)'}`);
+  console.log(` 调号已更新: ${currentMode === 'major' ? 'C大调 (无升降号)' : 'C小调 (三个降号)'}`);
 }
 
 const modeToggleBtn = document.getElementById("mode-toggle");
@@ -1257,5 +1345,5 @@ function refreshAllNotes() {
     }
   });
 
-  console.log(`🎼 音符已刷新为 ${getMode() === 'major' ? 'C大调' : 'C小调'}`);
+  console.log(` 音符已刷新为 ${getMode() === 'major' ? 'C大调' : 'C小调'}`);
 }

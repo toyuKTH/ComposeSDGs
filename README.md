@@ -14,15 +14,12 @@ This demo is **not using real SDG API data yet**.
 
 ---
 
-## 2. Sound engine
-
-All sounds are generated in the browser using **Web Audio API** .  
+## 2. Sound Design
+The sound engine is built on the **Web Audio API**, 
 Reference: https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API
-
-- 17 different timbre of 17 SDGs (horrible to hear for now, no time to improve...)
-- map SDG id → timbre (in `notemapping.js`)
-
-
+with **Tone.js** used as a high-level wrapper for sample playback and pitch handling.
+Reference: https://tonejs.github.io/
+Sample-based SDGs (1, 6, 7, 10, 15) are played through Tone.js, while others use Web Audio–based synthesis for now. See `notemapping.js`
 
 ---
 
