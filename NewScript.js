@@ -19,6 +19,10 @@ let notePositions = []; // 存储已添加的音符位置
 let isPlaying = false;
 let playIntervalId = null;
 
+// ------------------- 拖拽状态变量 -------------------
+let draggedElement = null;
+let draggedPosition = null;
+
 // ------------------- 获取下一个可用位置 -------------------
 function getNextAvailablePosition() {
   // 找出所有已占用的位置
@@ -657,6 +661,9 @@ function addNoteToStaff(countryName, sdgList, iso) {
   showMessage(` Added ${countryName} to staff!`);
   console.log(` 添加音符: ${countryName} (${sdgList.length} SDG${sdgList.length > 1 ? 's' : ''}) 在位置 ${nextPos}`);
   console.log(` 当前占用: ${notePositions.length}/8`);
+
+  // 🎵 启用拖拽功能
+  enableDragging(noteGroup);
 }
 
 // ------------------- 删除音符 -------------------
@@ -1106,6 +1113,9 @@ renderSDGCheckboxes();
 updateKeySignature(); // 初始化调号显示
 console.log(" SDG Map Ready with Smart Position Management and Note Mapping!");
 
+// 🎵 初始化拖拽功能
+initializeDragging();
+
 // ------------------- Tempo 输入验证 -------------------
 const tempoInput = document.getElementById("tempo-input");
 if (tempoInput) {
@@ -1336,14 +1346,236 @@ function refreshAllNotes() {
 
       container.appendChild(noteGroup);
 
+      //  启用拖拽
+      enableDragging(noteGroup);
+
     } else {
       // 这个位置是空的 - 添加占位符
       const placeholder = document.createElement("div");
       placeholder.className = "note-placeholder";
       placeholder.dataset.position = position;
       container.appendChild(placeholder);
+      //  启用拖拽
+      enableDragging(placeholder);
     }
   });
 
   console.log(` 音符已刷新为 ${getMode() === 'major' ? 'C大调' : 'C小调'}`);
+}// ========== 拖拽功能模块 ==========
+// 在 NewScript.js 末尾添加此代码
+
+// ------------------- 拖拽状态变量（添加到全局变量区域） -------------------
+// 在第21行后添加：
+// let draggedElement = null;
+// let draggedPosition = null;
+
+// ------------------- 启用拖拽功能 -------------------
+/**
+ * 为一个元素（note-group 或 note-placeholder）启用拖拽
+ * @param {HTMLElement} element - 要启用拖拽的元素
+ */
+function enableDragging(element) {
+  element.setAttribute('draggable', 'true');
+  element.style.cursor = 'move';
+
+  // 开始拖拽
+  element.addEventListener('dragstart', handleDragStart);
+  
+  // 拖拽经过
+  element.addEventListener('dragover', handleDragOver);
+  
+  // 拖拽进入
+  element.addEventListener('dragenter', handleDragEnter);
+  
+  // 拖拽离开
+  element.addEventListener('dragleave', handleDragLeave);
+  
+  // 放置
+  element.addEventListener('drop', handleDrop);
+  
+  // 拖拽结束
+  element.addEventListener('dragend', handleDragEnd);
 }
+
+// ------------------- 拖拽事件处理函数 -------------------
+
+function handleDragStart(e) {
+  draggedElement = this;
+  draggedPosition = parseInt(this.dataset.position);
+  
+  // 添加拖拽样式
+  this.style.opacity = '0.5';
+  this.classList.add('dragging');
+  
+  // 设置拖拽数据
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/html', this.innerHTML);
+  
+  console.log(` 开始拖拽位置 ${draggedPosition}`);
+}
+
+function handleDragOver(e) {
+  if (e.preventDefault) {
+    e.preventDefault(); // 允许放置
+  }
+  e.dataTransfer.dropEffect = 'move';
+  return false;
+}
+
+function handleDragEnter(e) {
+  // 如果不是拖拽的元素本身，添加高亮
+  if (this !== draggedElement) {
+    this.classList.add('drag-over');
+  }
+}
+
+function handleDragLeave(e) {
+  this.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+  if (e.stopPropagation) {
+    e.stopPropagation(); // 阻止浏览器默认行为
+  }
+  
+  this.classList.remove('drag-over');
+  
+  // 不能放到自己身上
+  if (draggedElement === this) {
+    return false;
+  }
+  
+  const targetPosition = parseInt(this.dataset.position);
+  
+  console.log(` 交换位置: ${draggedPosition} ↔ ${targetPosition}`);
+  
+  // 执行交换
+  swapPositions(draggedPosition, targetPosition);
+  
+  return false;
+}
+
+function handleDragEnd(e) {
+  // 移除所有拖拽样式
+  this.style.opacity = '1';
+  this.classList.remove('dragging');
+  
+  // 移除所有元素的 drag-over 样式
+  const allElements = document.querySelectorAll('.note-group, .note-placeholder');
+  allElements.forEach(el => {
+    el.classList.remove('drag-over');
+  });
+  
+  console.log(` 拖拽结束`);
+}
+
+// ------------------- 交换两个位置的内容 -------------------
+function swapPositions(pos1, pos2) {
+  const container = document.getElementById("treble-container");
+  
+  // 获取两个位置的元素
+  const element1 = container.querySelector(`[data-position="${pos1}"]`);
+  const element2 = container.querySelector(`[data-position="${pos2}"]`);
+  
+  if (!element1 || !element2) {
+    console.error("无法找到要交换的元素");
+    return;
+  }
+  
+  // 保存 notePositions 数据的引用
+  const noteData1 = notePositions.find(n => n.position === pos1);
+  const noteData2 = notePositions.find(n => n.position === pos2);
+  
+  // 创建一个临时标记节点用于交换位置
+  const tempMarker = document.createElement('div');
+  
+  // 交换DOM节点
+  // 1. 在 element1 前插入标记
+  element1.parentNode.insertBefore(tempMarker, element1);
+  
+  // 2. 将 element1 插入到 element2 的位置
+  element2.parentNode.insertBefore(element1, element2);
+  
+  // 3. 将 element2 插入到标记的位置（原来 element1 的位置）
+  tempMarker.parentNode.insertBefore(element2, tempMarker);
+  
+  // 4. 移除临时标记
+  tempMarker.remove();
+  
+  // 交换 data-position 属性
+  element1.dataset.position = pos2;
+  element2.dataset.position = pos1;
+  
+  // 更新 notePositions 数组中的位置
+  if (noteData1) {
+    noteData1.position = pos2;
+  }
+  if (noteData2) {
+    noteData2.position = pos1;
+  }
+  
+  console.log(" 当前 notePositions:", notePositions);
+}
+
+// ------------------- 为 note-group 附加事件监听器 -------------------
+function attachNoteGroupEvents(noteGroup) {
+  // 删除按钮
+  const deleteBtn = noteGroup.querySelector('.delete-note-btn');
+  if (deleteBtn) {
+    // 先移除旧的监听器（通过克隆）
+    const newDeleteBtn = deleteBtn.cloneNode(true);
+    deleteBtn.replaceWith(newDeleteBtn);
+    
+    newDeleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      removeNoteFromStaff(noteGroup);
+    });
+  }
+  
+  // 点击播放 - 直接在原元素上添加（不克隆）
+  noteGroup.addEventListener("click", (e) => {
+    if (e.target.classList.contains('delete-note-btn')) return;
+    
+    const notes = noteGroup.querySelectorAll('.chord-note[data-value]');
+    const notesData = Array.from(notes)
+      .map(n => ({
+        value: parseFloat(n.dataset.value),
+        sdg: n.dataset.sdg
+      }))
+      .filter(n => !isNaN(n.value));
+    
+    if (notesData.length === 1) {
+      playValueNote(notesData[0].value, notesData[0].sdg, 0.4);
+    } else if (notesData.length > 1) {
+      playValueChord(notesData, 0.4);
+    }
+    
+    noteGroup.style.transform = 'scale(1.1)';
+    setTimeout(() => {
+      noteGroup.style.transform = '';
+    }, 100);
+  });
+  
+  // 重新启用拖拽
+  enableDragging(noteGroup);
+  
+  return noteGroup;
+}
+
+// ------------------- 初始化所有拖拽 -------------------
+/**
+ * 为五线谱上的所有元素启用拖拽
+ */
+function initializeDragging() {
+  const container = document.getElementById("treble-container");
+  const allElements = container.querySelectorAll('.note-group, .note-placeholder');
+  
+  allElements.forEach(element => {
+    enableDragging(element);
+  });
+  
+  console.log(` 已启用 ${allElements.length} 个位置的拖拽功能`);
+}
+
+// ------------------- 导出函数（如果使用模块化） -------------------
+// export { enableDragging, initializeDragging, swapPositions };

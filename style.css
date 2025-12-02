@@ -1140,3 +1140,57 @@ body {
   font-weight: bold;
   color: #ff9800;
 }
+/* ========== 拖拽功能样式 ========== */
+
+/* 正在拖拽的元素 */
+.dragging {
+  opacity: 0.5 !important;
+  transform: scale(0.95);
+  cursor: grabbing !important;
+}
+
+/* 可拖拽元素的光标 */
+.note-group[draggable="true"],
+.note-placeholder[draggable="true"] {
+  cursor: grab;
+  transition: all 0.2s ease;
+}
+
+.note-group[draggable="true"]:hover,
+.note-placeholder[draggable="true"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 拖拽目标高亮 */
+.drag-over {
+  background-color: rgba(102, 126, 234, 0.1) !important;
+  border: 2px dashed #667eea !important;
+  transform: scale(1.02);
+  transition: all 0.2s ease;
+}
+
+/* 增强占位符的视觉反馈 */
+.note-placeholder[draggable="true"] {
+  border: 2px dashed #dee2e6;
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.note-placeholder[draggable="true"]:hover {
+  border-color: #667eea;
+  background-color: rgba(102, 126, 234, 0.05);
+}
+
+/* 拖拽时隐藏删除按钮，避免误操作 */
+.dragging .delete-note-btn {
+  display: none;
+}
+
+/* 禁用文本选择（拖拽时） */
+.note-group[draggable="true"],
+.note-placeholder[draggable="true"] {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
