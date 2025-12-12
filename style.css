@@ -83,8 +83,6 @@ body {
   padding: 24px;
   -webkit-box-sizing: border-box;
   box-sizing: border-box;
-  overflow-y: auto;
-  overflow-y: overlay;
   /* Chrome/Safari 更优雅的滚动条 */
   display: -webkit-box;
   display: -ms-flexbox;
@@ -95,6 +93,7 @@ body {
   flex-direction: column;
   gap: 16px;
   border-right: 1px solid #e9ecef;
+  overflow-x: hidden;
 }
 
 /* 自定义滚动条 - WebKit浏览器 (Chrome, Safari, Edge) */
@@ -141,6 +140,7 @@ body {
   -webkit-box-flex: 0;
   -ms-flex: 0 0 auto;
   flex: 0 0 auto;
+  padding-bottom: 120px;
 }
 
 #sdg_checkbox_list label {
@@ -541,6 +541,19 @@ body {
 
 .close-compose-btn:hover {
   background: #495057 !important;
+}
+
+/* Save按钮特殊样式 */
+#save-composition {
+  background: #28a745 !important;
+}
+
+#save-composition:hover {
+  background: #218838 !important;
+}
+
+#save-composition:active {
+  background: #1e7e34 !important;
 }
 
 /* ========== 五线谱结构 ========== */
@@ -1140,57 +1153,38 @@ body {
   font-weight: bold;
   color: #ff9800;
 }
-/* ========== 拖拽功能样式 ========== */
-
-/* 正在拖拽的元素 */
-.dragging {
-  opacity: 0.5 !important;
-  transform: scale(0.95);
-  cursor: grabbing !important;
+/* SDG列表滚动容器 */
+#sdg_checkbox_list {
+  overflow-y: auto;
+  overflow-y: overlay;
+  flex: 1;
+  max-height: calc(100vh - 240px);
+  padding-right: 4px;
 }
 
-/* 可拖拽元素的光标 */
-.note-group[draggable="true"],
-.note-placeholder[draggable="true"] {
-  cursor: grab;
-  transition: all 0.2s ease;
+/* SDG列表滚动条样式 */
+#sdg_checkbox_list::-webkit-scrollbar {
+  width: 6px;
 }
 
-.note-group[draggable="true"]:hover,
-.note-placeholder[draggable="true"]:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+#sdg_checkbox_list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-/* 拖拽目标高亮 */
-.drag-over {
-  background-color: rgba(102, 126, 234, 0.1) !important;
-  border: 2px dashed #667eea !important;
-  transform: scale(1.02);
-  transition: all 0.2s ease;
+#sdg_checkbox_list::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
 }
 
-/* 增强占位符的视觉反馈 */
-.note-placeholder[draggable="true"] {
-  border: 2px dashed #dee2e6;
-  background-color: rgba(255, 255, 255, 0.5);
+#sdg_checkbox_list::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
 }
 
-.note-placeholder[draggable="true"]:hover {
-  border-color: #667eea;
-  background-color: rgba(102, 126, 234, 0.05);
+#sdg_checkbox_list {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 transparent;
 }
 
-/* 拖拽时隐藏删除按钮，避免误操作 */
-.dragging .delete-note-btn {
-  display: none;
-}
-
-/* 禁用文本选择（拖拽时） */
-.note-group[draggable="true"],
-.note-placeholder[draggable="true"] {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
+/* SDG Indicator Tooltip */
+.sdg-indicator-tooltip {
+  position: absolute;}

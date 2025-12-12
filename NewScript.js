@@ -8,7 +8,7 @@ import { valueToNote, playValueNote, playValueChord, setMode, getMode } from './
 setupYearControl(); // 初始化年份控制
 
 // ------------------- 只显示5个SDG -------------------
-const selectedSDGList = [1, 6, 7, 10, 15];
+const selectedSDGList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 
 // ------------------- 全局状态 -------------------
 let currentSelectedIso = null;
@@ -1579,3 +1579,139 @@ function initializeDragging() {
 
 // ------------------- 导出函数（如果使用模块化） -------------------
 // export { enableDragging, initializeDragging, swapPositions };
+// =============== Save Audio Feature - 保存音频功能 ===============
+
+document.getElementById("save-composition").addEventListener("click", async () => {
+  if (notePositions.length === 0) {
+    showMessage("No notes to save! Add some notes first.");
+    return;
+  }
+
+  const saveBtn = document.getElementById("save-composition");
+  
+  try {
+    showMessage(" Recording composition...");
+    saveBtn.disabled = true;
+    saveBtn.textContent = " Recording...";
+    
+    const tempo = parseInt(document.getElementById("tempo-input").value) || 86;
+    const beatDuration = 60 / tempo;
+    const year = getCurrentYear();
+    
+    const totalDuration = (notePositions.length * beatDuration) + 1;
+    
+    const buffer = await Tone.Offline(async ({ transport }) => {
+      const offlineSamplers = {};
+      for (let i = 1; i <= 17; i++) {
+        offlineSamplers[i] = new Tone.Sampler({
+          urls: { C4: `sdg${i}.mp3` },
+          baseUrl: './samples/'
+        }).toDestination();
+      }
+      
+      await Tone.loaded();
+      
+      const sortedNotes = [...notePositions].sort((a, b) => a.position - b.position);
+      
+      sortedNotes.forEach((noteData, index) => {
+        const startTime = index * beatDuration;
+        
+        noteData.sdgs.forEach(sdg => {
+          const value = getSDGValue(sdgData, noteData.iso, year, sdg);
+          if (value !== null) {
+            const noteInfo = valueToNote(value);
+            const sdgNumber = parseInt(sdg);
+            
+            if (offlineSamplers[sdgNumber]) {
+              offlineSamplers[sdgNumber].triggerAttackRelease(
+                noteInfo.fullNoteName, 
+                beatDuration, 
+                startTime
+              );
+            }
+          }
+        });
+      });
+      
+      transport.start();
+    }, totalDuration);
+    
+    const wav = audioBufferToWav(buffer);
+    const blob = new Blob([wav], { type: 'audio/wav' });
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    link.download = `sdg-composition-${timestamp}.wav`;
+    
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showMessage(" Audio saved as WAV!");
+    console.log(" 音频已保存为 WAV 格式");
+    
+  } catch (error) {
+    console.error("录制失败:", error);
+    showMessage(" Recording failed: " + error.message);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = " Save";
+  }
+});
+
+function audioBufferToWav(buffer) {
+  const numOfChan = buffer.numberOfChannels;
+  const length = buffer.length * numOfChan * 2;
+  const arrayBuffer = new ArrayBuffer(44 + length);
+  const view = new DataView(arrayBuffer);
+  const channels = [];
+  let offset = 0;
+  let pos = 0;
+
+  setUint32(0x46464952);
+  setUint32(36 + length);
+  setUint32(0x45564157);
+
+  setUint32(0x20746d66);
+  setUint32(16);
+  setUint16(1);
+  setUint16(numOfChan);
+  setUint32(buffer.sampleRate);
+  setUint32(buffer.sampleRate * 2 * numOfChan);
+  setUint16(numOfChan * 2);
+  setUint16(16);
+
+  setUint32(0x61746164);
+  setUint32(length);
+
+  for (let i = 0; i < buffer.numberOfChannels; i++) {
+    channels.push(buffer.getChannelData(i));
+  }
+
+  while (pos < buffer.length) {
+    for (let i = 0; i < numOfChan; i++) {
+      let sample = Math.max(-1, Math.min(1, channels[i][pos]));
+      sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+      view.setInt16(44 + offset, sample, true);
+      offset += 2;
+    }
+    pos++;
+  }
+
+  return arrayBuffer;
+
+  function setUint16(data) {
+    view.setUint16(pos, data, true);
+    pos += 2;
+  }
+
+  function setUint32(data) {
+    view.setUint32(pos, data, true);
+    pos += 4;
+  }
+}

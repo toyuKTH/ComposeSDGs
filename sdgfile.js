@@ -81,7 +81,6 @@ export const sdgIndicators = {
     indicator: 'Indicator 2.4.1',
     description: 'Progress toward productive and sustainable agriculture, trend score',
     series: 'AG_LND_SUST_PRXTS',
-    note: 'PROXY'
   },
   '3': {
     goal: 'Good Health and Well-being',
@@ -202,9 +201,6 @@ export function formatIndicatorHTML(sdg) {
       <div class="indicator-description">
         ${info.description}
       </div>
-      <div class="indicator-series">
-        Series: <code>${info.series}</code>
-      </div>
       ${info.note ? `<div class="indicator-note">(${info.note})</div>` : ''}
     </div>
   `;
@@ -219,7 +215,7 @@ export function formatIndicatorText(sdg) {
   const info = getSDGIndicator(sdg);
   if (!info) return 'No indicator information available';
   
-  let text = `${info.indicator}\n${info.description}\nSeries: ${info.series}`;
+  let text = `${info.indicator}\n${info.description}`;
   if (info.note) text += `\n(${info.note})`;
   return text;
 }
