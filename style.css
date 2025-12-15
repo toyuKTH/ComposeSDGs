@@ -114,6 +114,13 @@ body {
   background: #a0aec0;
 }
 
+
+ #left-panel .note-text {
+  color: red;
+  font-size: 14px;
+  font-style: italic;
+}
+ 
 /* Firefox滚动条样式 */
 #left-panel {
   scrollbar-width: thin;
@@ -1188,3 +1195,7 @@ body {
 /* SDG Indicator Tooltip */
 .sdg-indicator-tooltip {
   position: absolute;}
+
+
+
+ 

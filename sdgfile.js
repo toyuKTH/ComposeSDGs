@@ -86,7 +86,7 @@ export const sdgIndicators = {
     goal: 'Good Health and Well-being',
     indicator: 'Indicator 3.8.1',
     description: 'Universal health coverage (UHC) service coverage index',
-    series: 'SH_ACS_UNHC'
+    series: 'SH_ACS_UNHC_25'
   },
   '4': {
     goal: 'Quality Education',
@@ -202,6 +202,9 @@ export function formatIndicatorHTML(sdg) {
         ${info.description}
       </div>
       ${info.note ? `<div class="indicator-note">(${info.note})</div>` : ''}
+    </div>
+    <div class="indicator-series">
+      <em>Data Series:</em> ${info.series}
     </div>
   `;
 }

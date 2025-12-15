@@ -42,35 +42,12 @@
   border-bottom: 2px solid #3498db;
 }
 
-.sdg-indicator-tooltip .indicator-code {
-  font-size: 11px;
-  font-weight: 500;
-  color: #3498db;
-  margin-bottom: 6px;
-}
 
 .sdg-indicator-tooltip .indicator-description {
   font-size: 11px;
   color: #555;
   margin-bottom: 8px;
   line-height: 1.6;
-}
-
-.sdg-indicator-tooltip .indicator-series {
-  font-size: 11px;
-  color: #7f8c8d;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid #ecf0f1;
-}
-
-.sdg-indicator-tooltip .indicator-series code {
-  background: #ecf0f1;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
-  color: #2c3e50;
 }
 
 .sdg-indicator-tooltip .indicator-note {

@@ -7,6 +7,27 @@ import { valueToNote, playValueNote, playValueChord, setMode, getMode } from './
 
 setupYearControl(); // 初始化年份控制
 
+
+// 监听年份变化
+window.addEventListener('yearChanged', (event) => {
+  const newYear = event.detail.year;
+  console.log('年份变化:', newYear);
+  
+  const selectedSDGs = getSelectedSDGs();
+  updateDataAvailabilityLayer(newYear, selectedSDGs);
+  
+  // 如果有选中的国家，更新显示
+  if (currentSelectedIso && currentSelectedName) {
+    updateFloatingCardContent(
+      currentSelectedIso, 
+      currentSelectedName, 
+      selectedSDGs, 
+      newYear,  // 使用新年份
+      sdgData
+    );
+  }
+});
+
 // ------------------- 只显示5个SDG -------------------
 const selectedSDGList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 
@@ -22,6 +43,13 @@ let playIntervalId = null;
 // ------------------- 拖拽状态变量 -------------------
 let draggedElement = null;
 let draggedPosition = null;
+// ------------------- 数据可用性层全局变量 -------------------
+let dataLayerAdded = false;
+const DATA_LAYER_ID = 'data-availability-layer';
+const DATA_SOURCE_ID = 'data-availability-source';
+const NO_DATA_LAYER_ID = 'no-data-layer';  // 新增：无数据国家的图层
+let countryDataStatus = {};
+
 
 // ------------------- 获取下一个可用位置 -------------------
 function getNextAvailablePosition() {
@@ -50,7 +78,7 @@ function renderSDGCheckboxes() {
   container.innerHTML = "";
 
   selectedSDGList.forEach(i => {
-    // 🎵 创建包装容器，包含 label 和试听按钮
+    //  创建包装容器，包含 label 和试听按钮
     const wrapper = document.createElement("div");
     wrapper.style.display = "flex";
     wrapper.style.alignItems = "center";
@@ -109,7 +137,7 @@ function renderSDGCheckboxes() {
       label.appendChild(tooltip);
     }
 
-    // 🎵 创建试听按钮
+    //  创建试听按钮
     const previewBtn = document.createElement("button");
     previewBtn.className = "sdg-preview-btn";
     previewBtn.innerHTML = "♪"; // 音符符号
@@ -146,7 +174,7 @@ function renderSDGCheckboxes() {
       e.stopPropagation();
 
       // 播放中央C的音高 (值 50 对应 G4 在此系统中)
-      // 🎵 预热音频上下文
+      // 预热音频上下文
       console.log(" 试听按钮被点击:", { originalSDG: i, convertedSDG: String(i), type: typeof String(i) });
       playValueNote(5, String(i), 1);
 
@@ -186,6 +214,11 @@ function renderSDGCheckboxes() {
       const year = getCurrentYear();
       updateFloatingCardContent(currentSelectedIso, currentSelectedName, getSelectedSDGs(), year, sdgData);
     }
+
+    // 更新数据可用性统计
+    const selectedSDGsForLayer = getSelectedSDGs();
+    const currentYearForLayer = getCurrentYear();
+    updateDataAvailabilityLayer(currentYearForLayer, selectedSDGsForLayer);
   });
 }
 
@@ -197,6 +230,125 @@ function getSelectedSDGs() {
   });
   return selected;
 }
+
+// ------------------- 数据可用性层函数 -------------------
+function initDataAvailabilityLayer() {
+  console.log('Data availability tracking initialized');
+  
+  // 添加无数据国家的填充层（灰色半透明）
+  if (!map.getLayer(NO_DATA_LAYER_ID)) {
+    map.addLayer({
+      id: NO_DATA_LAYER_ID,
+      type: 'fill',
+      source: 'composite',
+      'source-layer': 'country_boundaries',
+      paint: {
+        'fill-color': '#808080',  // 灰色
+        'fill-opacity': 0.5       // 半透明
+      },
+      filter: ['==', ['get', 'iso_3166_1_alpha_3'], '']  // 初始不显示任何国家
+    }, 'highlight-country');  // 放在高亮层下面
+  }
+  
+  dataLayerAdded = true;
+}
+
+function updateDataAvailabilityLayer(year, selectedSDGs = []) {
+  if (!map || !sdgData) {
+    console.warn('Map or data not initialized');
+    return;
+  }
+  
+  console.log(`Updating data availability: ${year}, SDGs:`, selectedSDGs);
+  
+  const yearStr = year.toString();
+  countryDataStatus = {};
+  let withData = 0;
+  let withoutData = 0;
+  
+  // 收集没有数据的国家ISO代码
+  const noDataCountries = [];
+  const hasDataCountries = [];
+  
+  Object.keys(sdgData).forEach(iso => {
+    let hasData = false;
+    
+    if (selectedSDGs.length > 0) {
+      // 检查是否有任意一个选中的SDG有数据（只要有一个就不变灰）
+      hasData = selectedSDGs.some(sdg => {
+        const sdgKey = `sdg${sdg}`;
+        return sdgData[iso]?.[yearStr]?.[sdgKey] !== undefined;
+      });
+    } else {
+      // 没有选中SDG时，不显示任何区分
+      hasData = true;  // 默认都视为"有数据"，不做区分
+    }
+    
+    countryDataStatus[iso] = hasData;
+    
+    if (hasData) {
+      withData++;
+      hasDataCountries.push(iso);
+    } else {
+      withoutData++;
+      noDataCountries.push(iso);
+    }
+  });
+  
+  console.log(`Data availability: ${withData} countries with data, ${withoutData} without data`);
+  console.log('No data countries:', noDataCountries.slice(0, 10), '...'); // 只打印前10个
+  
+  // 更新地图显示
+  updateMapDataVisualization(selectedSDGs, noDataCountries, hasDataCountries);
+}
+
+// 新增：更新地图视觉显示
+function updateMapDataVisualization(selectedSDGs, noDataCountries, hasDataCountries) {
+  if (!map.getLayer(NO_DATA_LAYER_ID)) {
+    console.warn('No data layer not found');
+    return;
+  }
+  
+  if (selectedSDGs.length === 0) {
+    // 没有选中任何SDG时，隐藏数据可用性层
+    map.setFilter(NO_DATA_LAYER_ID, ['==', ['get', 'iso_3166_1_alpha_3'], '']);
+    console.log('No SDGs selected, hiding data availability layer');
+  } else {
+    // 有选中的SDG时，显示没有数据的国家为灰色
+    if (noDataCountries.length > 0) {
+      // 使用 'in' 表达式来匹配多个ISO代码
+      map.setFilter(NO_DATA_LAYER_ID, [
+        'in',
+        ['get', 'iso_3166_1_alpha_3'],
+        ['literal', noDataCountries]
+      ]);
+      console.log(`Showing ${noDataCountries.length} countries as no-data (gray)`);
+    } else {
+      // 所有国家都有数据，隐藏灰色层
+      map.setFilter(NO_DATA_LAYER_ID, ['==', ['get', 'iso_3166_1_alpha_3'], '']);
+      console.log('All countries have data, hiding gray layer');
+    }
+  }
+}
+
+function hasCountryData(iso) {
+  return countryDataStatus[iso] === true;
+}
+
+function getDataCoverageStats() {
+  const total = Object.keys(countryDataStatus).length;
+  const withData = Object.values(countryDataStatus).filter(v => v === true).length;
+  const withoutData = total - withData;
+  const coverage = total > 0 ? ((withData / total) * 100).toFixed(1) : '0.0';
+  
+  return {
+    total,
+    withData,
+    withoutData,
+    coverage: coverage + '%'
+  };
+}
+
 // ------------------- Mapbox 初始化 -------------------
 mapboxgl.accessToken =
   "pk.eyJ1IjoidG95dWt0aCIsImEiOiJjbTdmeDRtZmswbW5yMmpxenN1cGdtMnN1In0.hzy7P7NJDCSYkc9gsunmyw";
@@ -213,6 +365,7 @@ map.doubleClickZoom.disable();
 
 // 固定高亮层：使用内置 country_boundaries，初始不过滤任何国家
 map.on('load', () => {
+  // 先添加高亮层
   if (!map.getLayer('highlight-country')) {
     map.addLayer({
       id: 'highlight-country',
@@ -226,15 +379,31 @@ map.on('load', () => {
       filter: ['==', ['get', 'iso_3166_1_alpha_3'], ''] // 初始不选任何国家
     });
   }
+  
+  // 初始化数据可用性层（在数据加载后会调用）
+  // initDataAvailabilityLayer 会在 sdgData 加载后调用
 });
 
 // ------------------- 数据加载 -------------------
 let sdgData = {};
-fetch("./data/sdg_fake_data_mapped.json")
+fetch("./data/sdg_data_mapped_real.json")
   .then(r => r.json())
   .then(json => {
     sdgData = json;
     console.log("SDG 数据加载成功");
+    
+    // 确保地图已加载完成后再初始化数据可用性层
+    if (map.loaded()) {
+      initDataAvailabilityLayer();
+      const currentYear = getCurrentYear();
+      updateDataAvailabilityLayer(currentYear);
+    } else {
+      map.on('load', () => {
+        initDataAvailabilityLayer();
+        const currentYear = getCurrentYear();
+        updateDataAvailabilityLayer(currentYear);
+      });
+    }
   })
   .catch(err => console.error(" 加载 SDG 数据失败:", err));
 
@@ -390,7 +559,7 @@ function updateFloatingCardContent(iso, name, sdgList, year, data) {
     addBtn.textContent = `+ Add to Staff (${availableCount} left)`;
   }
 
-  // 重新绑定关闭按钮事件
+  // 重新绑定关闭按钮事件（使用克隆来移除旧事件）
   const closeBtn = card.querySelector(".close-btn");
   const newCloseBtn = closeBtn.cloneNode(true);
   closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
@@ -424,51 +593,6 @@ function updateFloatingCardContent(iso, name, sdgList, year, data) {
       }
     }
   });
-}
-
-function positionFloatingCardAtPoint(point) {
-  const card = ensureFloatingCard();
-  const mapRect = document.getElementById("map").getBoundingClientRect();
-
-  // 计算初始位置
-  let x = point.x + mapRect.left;
-  let y = point.y + mapRect.top;
-
-  // 先设置位置以获取卡片尺寸
-  card.style.position = "absolute";
-  card.style.left = `${x}px`;
-  card.style.top = `${y}px`;
-  card.style.transform = "translate(-20px, -20px)";
-  card.classList.remove("hidden");
-
-  // 获取卡片和视口尺寸
-  const cardRect = card.getBoundingClientRect();
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-
-  // 检查右侧溢出
-  if (cardRect.right > viewportWidth) {
-    x = viewportWidth - cardRect.width - 20; // 左移，留20px边距
-  }
-
-  // 检查左侧溢出
-  if (cardRect.left < 0) {
-    x = 20; // 右移，留20px边距
-  }
-
-  // 检查底部溢出
-  if (cardRect.bottom > viewportHeight) {
-    y = viewportHeight - cardRect.height - 20; // 上移，留20px边距
-  }
-
-  // 检查顶部溢出
-  if (cardRect.top < 60) { // 60px 是 header 高度
-    y = 80; // 下移到 header 下方
-  }
-
-  // 应用调整后的位置
-  card.style.left = `${x}px`;
-  card.style.top = `${y}px`;
 }
 
 function hideFloatingCard() {
@@ -651,87 +775,42 @@ function addNoteToStaff(countryName, sdgList, iso) {
 
   // 替换占位符
   placeholder.replaceWith(noteGroup);
+
+  // 记录添加的音符
   notePositions.push({
     position: nextPos,
-    country: countryName,
     iso: iso,
+    country: countryName,
     sdgs: sdgList
   });
 
-  showMessage(` Added ${countryName} to staff!`);
-  console.log(` 添加音符: ${countryName} (${sdgList.length} SDG${sdgList.length > 1 ? 's' : ''}) 在位置 ${nextPos}`);
-  console.log(` 当前占用: ${notePositions.length}/8`);
-
-  // 🎵 启用拖拽功能
+  // 启用拖拽
   enableDragging(noteGroup);
+
+  console.log(` 添加音符: ${countryName} at position ${nextPos}`);
 }
 
-// ------------------- 删除音符 -------------------
+// ------------------- 从五线谱移除音符 -------------------
 function removeNoteFromStaff(noteGroup) {
-  const actualPosition = parseInt(noteGroup.dataset.position);
+  const position = parseInt(noteGroup.dataset.position);
+  const country = noteGroup.dataset.country;
 
-  // 创建占位符（不显示数字）
+  // 创建新的占位符
   const placeholder = document.createElement("div");
   placeholder.className = "note-placeholder";
-  placeholder.dataset.position = actualPosition;
+  placeholder.dataset.position = position;
 
-  // 替换音符组
+  // 替换音符组为占位符
   noteGroup.replaceWith(placeholder);
 
-  // 从数组中移除
-  notePositions = notePositions.filter(n => n.position !== actualPosition);
+  // 从记录中移除
+  notePositions = notePositions.filter(n => n.position !== position);
 
-  console.log(`删除音符位置 ${actualPosition}`);
-  console.log(`当前占用: ${notePositions.length}/8`);
+  // 为新的占位符启用拖拽
+  enableDragging(placeholder);
 
-  //  更新卡片按钮状态
-  if (currentSelectedIso && currentSelectedName) {
-    const year = getCurrentYear();
-    updateFloatingCardContent(currentSelectedIso, currentSelectedName, getSelectedSDGs(), year, sdgData);
-  }
-
-  showMessage(`Removed note from position ${actualPosition}`);
+  console.log(` 移除音符: ${country} from position ${position}`);
 }
-
-// ------------------- Composer Toggle 逻辑 -------------------
-const startComposeBtn = document.getElementById("start-compose-btn");
-const closeComposeBtn = document.getElementById("close-compose-btn");
-const composerArea = document.getElementById("composer-area");
-const mainArea = document.getElementById("main");
-
-startComposeBtn.addEventListener("click", () => {
-  composerArea.classList.remove("hidden");
-  mainArea.classList.add("composer-open");
-
-  if (currentSelectedIso && currentSelectedName) {
-    const year = getCurrentYear();
-    updateFloatingCardContent(currentSelectedIso, currentSelectedName, getSelectedSDGs(), year, sdgData);
-  }
-
-  setTimeout(() => {
-    map.resize();
-    console.log(" 地图大小已调整 (Composer 打开)");
-  }, 350);
-});
-
-closeComposeBtn.addEventListener("click", () => {
-  composerArea.classList.add("hidden");
-  mainArea.classList.remove("composer-open");
-
-  if (currentSelectedIso && currentSelectedName) {
-    const year = getCurrentYear();
-    updateFloatingCardContent(currentSelectedIso, currentSelectedName, getSelectedSDGs(), year, sdgData);
-  }
-
-  setTimeout(() => {
-    map.resize();
-    console.log(" 地图大小已调整 (Composer 关闭)");
-  }, 350);
-});
-
-window.addEventListener('resize', () => {
-  map.resize();
-});
 
 // ------------------- 地图点击逻辑 -------------------
 map.on("click", e => {
@@ -770,6 +849,104 @@ map.on("click", e => {
   updateFloatingCardContent(iso, name, selectedSDGs, year, sdgData);
   positionFloatingCardAtPoint(e.point);
 });
+
+// ------------------- 浮动卡片位置函数 -------------------
+function positionFloatingCardAtPoint(point) {
+  const card = ensureFloatingCard();
+  card.classList.remove("hidden");
+
+  // 将地图点转换为屏幕坐标
+  const x = point.x + 15;
+  const y = point.y + 15;
+
+  // 先设置初始位置
+  card.style.left = `${x}px`;
+  card.style.top = `${y}px`;
+
+  // 获取视口和卡片尺寸
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const cardRect = card.getBoundingClientRect();
+
+  let finalX = x;
+  let finalY = y;
+
+  // 检查右侧溢出
+  if (cardRect.right > viewportWidth) {
+    finalX = x - cardRect.width - 30;
+  }
+
+  // 检查左侧溢出
+  if (cardRect.left < 0) {
+    finalX = 20;
+  }
+
+  // 检查底部溢出
+  if (cardRect.bottom > viewportHeight) {
+    finalY = viewportHeight - cardRect.height - 20;
+  }
+
+  // 检查顶部溢出
+  if (cardRect.top < 60) {
+    finalY = 80;
+  }
+
+  // 应用调整后的位置
+  card.style.left = `${finalX}px`;
+  card.style.top = `${finalY}px`;
+}
+
+// ------------------- Composer Toggle 逻辑 -------------------
+const startComposeBtn = document.getElementById("start-compose-btn");
+const closeComposeBtn = document.getElementById("close-compose-btn");
+const composerArea = document.getElementById("composer-area");
+const mainArea = document.getElementById("main");
+
+if (startComposeBtn) {
+  startComposeBtn.addEventListener("click", () => {
+    composerArea.classList.remove("hidden");
+    mainArea.classList.add("composer-open");
+
+    if (currentSelectedIso && currentSelectedName) {
+      const year = getCurrentYear();
+      updateFloatingCardContent(currentSelectedIso, currentSelectedName, getSelectedSDGs(), year, sdgData);
+    }
+
+    setTimeout(() => {
+      map.resize();
+      console.log(" 地图大小已调整 (Composer 打开)");
+    }, 350);
+  });
+}
+
+if (closeComposeBtn) {
+  closeComposeBtn.addEventListener("click", () => {
+    composerArea.classList.add("hidden");
+    mainArea.classList.remove("composer-open");
+
+    if (currentSelectedIso && currentSelectedName) {
+      const year = getCurrentYear();
+      updateFloatingCardContent(currentSelectedIso, currentSelectedName, getSelectedSDGs(), year, sdgData);
+    }
+
+    setTimeout(() => {
+      map.resize();
+      console.log(" 地图大小已调整 (Composer 关闭)");
+    }, 350);
+  });
+}
+
+window.addEventListener('resize', () => {
+  map.resize();
+});
+
+// ------------------- 初始化 -------------------
+renderSDGCheckboxes();
+updateKeySignature(); // 初始化调号显示
+console.log(" SDG Map Ready with Smart Position Management and Note Mapping!");
+
+// 初始化拖拽功能
+initializeDragging();
 
 // ------------------- Play Melody 播放/停止功能 -------------------
 document.getElementById("play-melody").addEventListener("click", () => {
@@ -912,6 +1089,9 @@ document.getElementById("clear-all").addEventListener("click", () => {
 
   notePositions = [];
 
+  // 重新初始化拖拽
+  initializeDragging();
+
   console.log(" 清空所有选择和音符");
   console.log(` 当前占用: 0/8`);
 });
@@ -980,6 +1160,8 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
         const noteGroup = document.createElement("div");
         noteGroup.className = "note-group";
         noteGroup.dataset.position = position;
+        noteGroup.dataset.country = noteData.country;
+        noteGroup.dataset.iso = noteData.iso;
 
         // 添加删除按钮
         const deleteBtn = document.createElement("button");
@@ -1080,12 +1262,18 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
 
         container.appendChild(noteGroup);
 
+        // 启用拖拽
+        enableDragging(noteGroup);
+
       } else {
         // 这个位置是空的 - 添加占位符
         const placeholder = document.createElement("div");
         placeholder.className = "note-placeholder";
         placeholder.dataset.position = position;
         container.appendChild(placeholder);
+        
+        // 启用拖拽
+        enableDragging(placeholder);
       }
     });
 
@@ -1106,15 +1294,6 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
 
   }, 300);
 });
-
-
-// ------------------- 初始化 -------------------
-renderSDGCheckboxes();
-updateKeySignature(); // 初始化调号显示
-console.log(" SDG Map Ready with Smart Position Management and Note Mapping!");
-
-// 🎵 初始化拖拽功能
-initializeDragging();
 
 // ------------------- Tempo 输入验证 -------------------
 const tempoInput = document.getElementById("tempo-input");
@@ -1152,9 +1331,6 @@ if (tempoInput) {
   });
 }
 
-
-// ------------------- 调式切换按钮 -------------------
-
 // ------------------- 更新调号显示 -------------------
 function updateKeySignature() {
   const keySignatureContainer = document.getElementById("key-signature");
@@ -1191,6 +1367,7 @@ function updateKeySignature() {
   console.log(` 调号已更新: ${currentMode === 'major' ? 'C大调 (无升降号)' : 'C小调 (三个降号)'}`);
 }
 
+// ------------------- 调式切换按钮 -------------------
 const modeToggleBtn = document.getElementById("mode-toggle");
 
 if (modeToggleBtn) {
@@ -1217,7 +1394,6 @@ if (modeToggleBtn) {
     updateKeySignature();
   });
 }
-
 
 /**
  * 刷新五线谱上的所有音符（调式切换时使用）
@@ -1246,6 +1422,8 @@ function refreshAllNotes() {
       const noteGroup = document.createElement("div");
       noteGroup.className = "note-group";
       noteGroup.dataset.position = position;
+      noteGroup.dataset.country = noteData.country;
+      noteGroup.dataset.iso = noteData.iso;
 
       // 添加删除按钮
       const deleteBtn = document.createElement("button");
@@ -1361,69 +1539,40 @@ function refreshAllNotes() {
   });
 
   console.log(` 音符已刷新为 ${getMode() === 'major' ? 'C大调' : 'C小调'}`);
-}// ========== 拖拽功能模块 ==========
-// 在 NewScript.js 末尾添加此代码
+}
 
-// ------------------- 拖拽状态变量（添加到全局变量区域） -------------------
-// 在第21行后添加：
-// let draggedElement = null;
-// let draggedPosition = null;
-
-// ------------------- 启用拖拽功能 -------------------
-/**
- * 为一个元素（note-group 或 note-placeholder）启用拖拽
- * @param {HTMLElement} element - 要启用拖拽的元素
- */
+// ------------------- 拖拽功能 -------------------
 function enableDragging(element) {
   element.setAttribute('draggable', 'true');
   element.style.cursor = 'move';
 
-  // 开始拖拽
   element.addEventListener('dragstart', handleDragStart);
-  
-  // 拖拽经过
   element.addEventListener('dragover', handleDragOver);
-  
-  // 拖拽进入
   element.addEventListener('dragenter', handleDragEnter);
-  
-  // 拖拽离开
   element.addEventListener('dragleave', handleDragLeave);
-  
-  // 放置
   element.addEventListener('drop', handleDrop);
-  
-  // 拖拽结束
   element.addEventListener('dragend', handleDragEnd);
 }
-
-// ------------------- 拖拽事件处理函数 -------------------
 
 function handleDragStart(e) {
   draggedElement = this;
   draggedPosition = parseInt(this.dataset.position);
-  
-  // 添加拖拽样式
   this.style.opacity = '0.5';
   this.classList.add('dragging');
-  
-  // 设置拖拽数据
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/html', this.innerHTML);
-  
-  console.log(` 开始拖拽位置 ${draggedPosition}`);
+  console.log(` 开始拖拽: position ${draggedPosition}`);
 }
 
 function handleDragOver(e) {
   if (e.preventDefault) {
-    e.preventDefault(); // 允许放置
+    e.preventDefault();
   }
   e.dataTransfer.dropEffect = 'move';
   return false;
 }
 
 function handleDragEnter(e) {
-  // 如果不是拖拽的元素本身，添加高亮
   if (this !== draggedElement) {
     this.classList.add('drag-over');
   }
@@ -1434,20 +1583,16 @@ function handleDragLeave(e) {
 }
 
 function handleDrop(e) {
-  if (e.stopPropagation) {
-    e.stopPropagation(); // 阻止浏览器默认行为
-  }
-  
-  this.classList.remove('drag-over');
-  
-  // 不能放到自己身上
-  if (draggedElement === this) {
-    return false;
-  }
+  e.stopPropagation();
+  e.preventDefault();
   
   const targetPosition = parseInt(this.dataset.position);
   
-  console.log(` 交换位置: ${draggedPosition} ↔ ${targetPosition}`);
+  if (draggedPosition === targetPosition) {
+    return false;
+  }
+  
+  console.log(` 放下: 从 ${draggedPosition} 到 ${targetPosition}`);
   
   // 执行交换
   swapPositions(draggedPosition, targetPosition);
