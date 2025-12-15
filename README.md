@@ -1,16 +1,13 @@
 ## 1. Data status
-
+The project is now using real data including 17 SDGs.
 Principles for Selecting Sub-Dataset:
 1. Better in percentage format
 2. Positive semantics sub-indicators were chosen, meaning higher valure higher performance
 3. As less missing data as possible
 
-Hover over the sdg, information would be shown in tooltip, and 5sdgs can be changed in the NewScript.js file.
+When you hover over an SDG, the tooltip shows information about the selected sub-indicator.
 
-This demo is **not using real SDG API data yet**.  
-- The API-related file (`apidata.py`) has been written, but the real remote call takes too long.
-- The current interface is driven by **fake data** so that everything can be tested.
-- When the real data is ready, it can be switched to real data without changing the mapping logic.
+Because the data API required too much time, the real data was manually processed and organized. The dataset currently in use was obtained on December 13, 2025.
 
 ---
 
@@ -19,7 +16,10 @@ The sound engine is built on the **Web Audio API**,
 Reference: https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API
 with **Tone.js** used as a high-level wrapper for sample playback and pitch handling.
 Reference: https://tonejs.github.io/
-Sample-based SDGs (1, 6, 7, 10, 15) are played through Tone.js, while others use Web Audio–based synthesis for now. See `notemapping.js`
+
+
+All sounds currently use a sample-based approach. Starting from a single instrument sample at pitch C4 and map SDG values to notes using Tone.js. The instrument samples are sourced from the webpage below. 
+Reference: https://philharmonia.co.uk/resources/sound-samples/
 
 ---
 
