@@ -166,17 +166,37 @@ export function isHarmonic(value1, value2) {
 
 let toneReady = typeof Tone !== 'undefined';
 
+//创建reverb效果
+let reverb = null;
+
+if (toneReady) {
+  reverb = new Tone.Reverb({
+    decay: 2.5,    // 混响衰减时间（秒）
+    wet: 0.3       // 干湿比（0=纯干声，1=纯湿声）
+  }).toDestination();
+}
+
 // 创建17个采样器的数组
 const samplers = {};
+
+// if (toneReady) {
+//   for (let i = 1; i <= 17; i++) {
+//     samplers[i] = new Tone.Sampler({
+//       urls: { C4: `sdg${i}.mp3` },
+//       baseUrl: './samples/'
+//     }).toDestination();
+//   }
+// }
 
 if (toneReady) {
   for (let i = 1; i <= 17; i++) {
     samplers[i] = new Tone.Sampler({
       urls: { C4: `sdg${i}.mp3` },
       baseUrl: './samples/'
-    }).toDestination();
+    }).connect(reverb);
   }
 }
+
 
 // 播放采样音色
 function playSample(sdgNumber, noteName, duration = 0.5) {

@@ -151,18 +151,38 @@
 }
 
 /* ========== 符杆 ========== */
+/* 
+  五线谱符杆规则：
+  - 第三线以下（value ≤ 60）：符杆在符头右侧，向上延伸 ↑
+  - 第三线及以上（value > 60）：符杆在符头左侧，向下延伸 ↓
+  
+  符头宽度: 16px，高度: 12px
+  符杆宽度: 2px
+*/
+
+/* 默认符杆朝上：在符头右侧向上延伸（用于 value ≤ 60） */
 .note-stem {
-  top: 6px !important;
-  bottom: auto !important;
+  position: absolute !important;
+  width: 2px !important;
+  height: 35px !important;
+  /* 符杆从符头顶部向上延伸 */
+  bottom: 6px !important;
+  top: auto !important;
+  /* 符杆在符头右边缘 */
+  right: 1px !important;
+  left: auto !important;
 }
 
 .chord .chord-note .note-stem {
   height: 50px !important;
-  top: 6px !important;
+  bottom: 6px !important;
+  top: auto !important;
+  right: 1px !important;
+  left: auto !important;
   display: block !important;
 }
 
-/* 只显示第一个音符的符杆 */
+/* 只显示第一个音符的符杆（符杆朝上时，从最低音延伸） */
 .chord .chord-note:first-child .note-stem {
   display: block !important;
 }
@@ -175,4 +195,36 @@
 .note-head {
   position: relative !important;
   background-color: currentColor !important;
+}
+
+/* ========== 符杆朝下样式 (value > 60，第三线及以上) ========== */
+/*
+  符杆朝下时：
+  - 符杆在符头左侧
+  - 从符头向下延伸
+*/
+.stem-down .note-stem {
+  /* 符杆在符头左边缘 */
+  right: auto !important;
+  left: 1px !important;
+  /* 符杆从符头底部向下延伸 */
+  bottom: auto !important;
+  top: 6px !important;
+}
+
+/* 和弦中符杆朝下的处理 */
+.chord .chord-note.stem-down .note-stem {
+  right: auto !important;
+  left: 1px !important;
+  bottom: auto !important;
+  top: 6px !important;
+}
+
+/* 当和弦中有符杆朝下的音符时，只显示最后一个（最高音）的符杆 */
+.chord:has(.stem-down) .chord-note .note-stem {
+  display: none !important;
+}
+
+.chord:has(.stem-down) .chord-note.stem-down:last-of-type .note-stem {
+  display: block !important;
 }

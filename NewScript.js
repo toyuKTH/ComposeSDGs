@@ -607,9 +607,16 @@ function createQuarterNote(sdg, color, value) {
   noteDiv.dataset.sdg = String(sdg);
   noteDiv.dataset.value = value;
 
-  // 🎵 应用音高位置
+  //  应用音高位置
   const noteInfo = valueToNote(value);
   noteDiv.classList.add(noteInfo.positionClass);
+
+  //  判断符杆方向：第三线（B4, 61-70）及以上符杆朝下，以下符杆朝上
+  // 根据五线谱规则：value > 60 时（B4及以上）符杆朝下
+  const stemDown = value > 60;
+  if (stemDown) {
+    noteDiv.classList.add('stem-down');
+  }
 
   // 如果是 C (0-10)，添加下加线
   if (noteInfo.needsLedgerLine === 'below') {
