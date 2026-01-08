@@ -389,6 +389,13 @@ body {
   border-bottom: none;
 }
 
+/* 表头行样式 */
+#floating-info-card .sdg-item.sdg-header {
+  border-bottom: 2px solid #dee2e6;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+}
+
 #floating-info-card .sdg-item span:nth-child(1) {
   text-align: left;
 }
@@ -1199,3 +1206,26 @@ body {
 
 
  
+/* ========== Start Compose 按钮激活状态 ========== */
+#start-compose-btn.composing-active {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+}
+
+#start-compose-btn.composing-active:hover {
+  background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+  box-shadow: 0 6px 18px rgba(231, 76, 60, 0.4);
+}
+
+/* 录制指示器（可选） */
+#start-compose-btn.composing-active::before {
+  content: "●";
+  margin-right: 8px;
+  animation: pulse-recording 1s ease-in-out infinite;
+  color: #fff;
+}
+
+@keyframes pulse-recording {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}

@@ -4,14 +4,22 @@
 import { setupYearControl, getCurrentYear } from './yearControl.js';
 import { sdgColors, sdgNames, getSDGIndicator, formatIndicatorHTML, formatIndicatorText } from './sdgfile.js';
 import { valueToNote, playValueNote, playValueChord, setMode, getMode } from './notemapping.js';
+import { logger } from './logger.js';
 
 setupYearControl(); // 初始化年份控制
+
+// ------------------- 实验模式全局状态 -------------------
+let isSoundEnabled = false;  // 默认无声模式
+let isComposingMode = false; // 是否在创作模式
 
 
 // 监听年份变化
 window.addEventListener('yearChanged', (event) => {
   const newYear = event.detail.year;
   console.log('年份变化:', newYear);
+  
+  // Log: 年份变化
+  logger.log('year_change', { year: newYear });
   
   const selectedSDGs = getSelectedSDGs();
   updateDataAvailabilityLayer(newYear, selectedSDGs);
@@ -173,6 +181,15 @@ function renderSDGCheckboxes() {
       e.preventDefault();
       e.stopPropagation();
 
+      // Log: SDG 试听
+      logger.log('sdg_preview', { sdg: String(i) });
+
+      // 检查声音是否启用
+      if (!isSoundEnabled) {
+        showMessage("Sound is disabled. Click 'Start Compose' to enable sound.");
+        return;
+      }
+
       // 播放中央C的音高 (值 50 对应 G4 在此系统中)
       // 预热音频上下文
       console.log(" 试听按钮被点击:", { originalSDG: i, convertedSDG: String(i), type: typeof String(i) });
@@ -198,12 +215,20 @@ function renderSDGCheckboxes() {
     const checkboxes = container.querySelectorAll("input[type='checkbox']");
     const checked = Array.from(checkboxes).filter(cb => cb.checked);
 
-    if (checked.length >= 4) {
+    // Log: SDG 选择/取消选择
+    const changedSDG = e.target.value;
+    if (e.target.checked) {
+      logger.log('sdg_select', { sdg: changedSDG });
+    } else {
+      logger.log('sdg_deselect', { sdg: changedSDG });
+    }
+
+    if (checked.length >= 3) {
       checkboxes.forEach(cb => {
         if (!cb.checked) cb.disabled = true;
       });
-      if (checked.length === 4 && e.target.checked) {
-        showMessage("You can select up to 4 SDGs.");
+      if (checked.length === 3 && e.target.checked) {
+        showMessage("You can select up to 3 SDGs.");
       }
     } else {
       checkboxes.forEach(cb => (cb.disabled = false));
@@ -493,9 +518,22 @@ function updateFloatingCardContent(iso, name, sdgList, year, data) {
   nameSpan.textContent = name || iso;
   container.innerHTML = "";
 
+  // 添加表头行
+  if (sdgList.length > 0) {
+    const headerRow = document.createElement("div");
+    headerRow.className = "sdg-item sdg-header";
+    headerRow.innerHTML = `
+      <span style="color: #6c757d; font-weight: 600;">SDG</span>
+      <span style="color: #6c757d; font-weight: 600;">Value</span>
+      <span style="color: #6c757d; font-weight: 600;">Note</span>
+      <span></span>
+    `;
+    container.appendChild(headerRow);
+  }
+
   sdgList.forEach(sdg => {
     const v = getSDGValue(data, iso, year, sdg);
-    const display = typeof v === "number" ? v.toFixed(1) : "no value";
+    const display = typeof v === "number" ? v.toFixed(1) : "N/A";
 
     // 获取音符信息
     let noteName = "𝄽"; // 休止符 (Unicode)
@@ -532,6 +570,11 @@ function updateFloatingCardContent(iso, name, sdgList, year, data) {
     const playBtn = row.querySelector('.sdg-play-btn');
     playBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      // 检查声音是否启用
+      if (!isSoundEnabled) {
+        showMessage("Sound is disabled. Click 'Start Compose' to enable sound.");
+        return;
+      }
       if (typeof v === "number") playValueNote(v, sdg, 0.5);
     });
 
@@ -601,7 +644,7 @@ function hideFloatingCard() {
 }
 
 // ------------------- 创建4分音符或和弦（带音高映射）-------------------
-function createQuarterNote(sdg, color, value) {
+function createQuarterNote(sdg, color, value, forceStemDown = null) {
   const noteDiv = document.createElement("div");
   noteDiv.className = "quarter-note chord-note";
   noteDiv.dataset.sdg = String(sdg);
@@ -611,9 +654,10 @@ function createQuarterNote(sdg, color, value) {
   const noteInfo = valueToNote(value);
   noteDiv.classList.add(noteInfo.positionClass);
 
-  //  判断符杆方向：第三线（B4, 61-70）及以上符杆朝下，以下符杆朝上
-  // 根据五线谱规则：value > 60 时（B4及以上）符杆朝下
-  const stemDown = value > 60;
+  //  判断符杆方向
+  // 如果传入了 forceStemDown 参数（和弦情况），使用统一方向
+  // 否则按单音符规则：value > 60 时符杆朝下
+  const stemDown = forceStemDown !== null ? forceStemDown : (value > 60);
   if (stemDown) {
     noteDiv.classList.add('stem-down');
   }
@@ -680,7 +724,7 @@ function addNoteToStaff(countryName, sdgList, iso) {
   });
   noteGroup.appendChild(deleteBtn);
 
-  // 🎵 先检查所有 SDG 是否都有值
+  // 先检查所有 SDG 是否都有值
   const allValues = sdgList.map(sdg => getSDGValue(sdgData, iso, year, sdg));
   const hasAnyValue = allValues.some(val => val !== null);
 
@@ -720,6 +764,15 @@ function addNoteToStaff(countryName, sdgList, iso) {
     // 按值排序（从低到高）
     notesData.sort((a, b) => a.value - b.value);
 
+    // 计算和弦的统一符杆方向
+    // 规则：由离中线（value=60，B4）最远的音符决定
+    const lowValue = notesData[0].value;
+    const highValue = notesData[notesData.length - 1].value;
+    const distanceFromLow = 60 - lowValue;   // 最低音到中线的距离
+    const distanceFromHigh = highValue - 60; // 最高音到中线的距离
+    // 如果最高音离中线更远或一样远，符杆朝下；否则朝上
+    const chordStemDown = distanceFromHigh >= distanceFromLow;
+
     //  检测相同音高的音符并分组
     const valueGroups = {};
     notesData.forEach(data => {
@@ -729,7 +782,7 @@ function addNoteToStaff(countryName, sdgList, iso) {
     });
 
     notesData.forEach(data => {
-      const note = createQuarterNote(data.sdg, data.color, data.value);
+      const note = createQuarterNote(data.sdg, data.color, data.value, chordStemDown);
 
       //  如果同一音高有多个音符，左右对称错开显示
       const key = Math.floor(data.value / 10) * 10;
@@ -794,6 +847,16 @@ function addNoteToStaff(countryName, sdgList, iso) {
   // 启用拖拽
   enableDragging(noteGroup);
 
+  // Log: 添加音符
+  const values = sdgList.map(sdg => getSDGValue(sdgData, iso, year, sdg)).filter(v => v !== null);
+  logger.log('note_add', { 
+    country: countryName, 
+    iso: iso, 
+    position: nextPos, 
+    sdgs: sdgList,
+    values: values
+  });
+
   console.log(` 添加音符: ${countryName} at position ${nextPos}`);
 }
 
@@ -801,6 +864,9 @@ function addNoteToStaff(countryName, sdgList, iso) {
 function removeNoteFromStaff(noteGroup) {
   const position = parseInt(noteGroup.dataset.position);
   const country = noteGroup.dataset.country;
+
+  // Log: 删除音符
+  logger.log('note_delete', { country: country, position: position });
 
   // 创建新的占位符
   const placeholder = document.createElement("div");
@@ -834,6 +900,9 @@ map.on("click", e => {
   const iso = countryFeature.properties.iso_3166_1_alpha_3;
   const name = countryFeature.properties.name_en || countryFeature.properties.name || iso;
   const year = getCurrentYear();
+
+  // Log: 点击国家
+  logger.log('country_click', { iso: iso, country: name, year: year });
 
   // 再次点击同国取消
   if (currentSelectedIso === iso) {
@@ -903,31 +972,141 @@ function positionFloatingCardAtPoint(point) {
   card.style.top = `${finalY}px`;
 }
 
-// ------------------- Composer Toggle 逻辑 -------------------
+// ------------------- Composer Toggle 逻辑（实验版本）-------------------
 const startComposeBtn = document.getElementById("start-compose-btn");
 const closeComposeBtn = document.getElementById("close-compose-btn");
 const composerArea = document.getElementById("composer-area");
 const mainArea = document.getElementById("main");
 
+/**
+ * 开始创作模式（启用声音，开始记录）
+ */
+function startComposingMode() {
+  // 弹出确认框
+  const sessionId = prompt(
+    "Ready to start composing?\n\n" +
+    "Please enter participant ID (e.g., P01):\n" +
+    "(Leave empty for auto-generated ID)",
+    ""
+  );
+  
+  if (sessionId === null) {
+    // 用户点击取消
+    return;
+  }
+  
+  // 启用声音
+  isSoundEnabled = true;
+  isComposingMode = true;
+  
+  // 开始 Logger 记录
+  const actualSessionId = logger.startSession(sessionId || undefined);
+  
+  // 显示 Composer 区域
+  composerArea.classList.remove("hidden");
+  mainArea.classList.add("composer-open");
+  
+  // 更新按钮状态
+  startComposeBtn.textContent = "⏹ End Compose";
+  startComposeBtn.classList.add("composing-active");
+  
+  // 更新浮动卡片
+  if (currentSelectedIso && currentSelectedName) {
+    const year = getCurrentYear();
+    updateFloatingCardContent(currentSelectedIso, currentSelectedName, getSelectedSDGs(), year, sdgData);
+  }
+  
+  setTimeout(() => {
+    map.resize();
+    console.log("Composing mode started - Sound enabled, Logging active");
+  }, 350);
+  
+  showMessage(`Session ${actualSessionId} started. Sound enabled.`);
+}
+
+/**
+ * 结束创作模式（关闭声音，停止记录并导出）
+ */
+function endComposingMode() {
+  // 确认结束
+  const confirmEnd = confirm(
+    "End composing session?\n\n" +
+    "This will:\n" +
+    "• Stop recording interactions\n" +
+    "• Download the log file\n" +
+    "• Disable sound"
+  );
+  
+  if (!confirmEnd) {
+    return;
+  }
+  
+  // 停止播放（如果正在播放）
+  if (isPlaying) {
+    stopPlayback();
+    document.getElementById("play-melody").textContent = "▶ Play";
+    isPlaying = false;
+  }
+  
+  // 结束 Logger 记录（自动下载）
+  logger.endSession();
+  
+  // 禁用声音
+  isSoundEnabled = false;
+  isComposingMode = false;
+  
+  // 隐藏 Composer 区域
+  composerArea.classList.add("hidden");
+  mainArea.classList.remove("composer-open");
+  
+  // 更新按钮状态
+  startComposeBtn.textContent = "Start Compose";
+  startComposeBtn.classList.remove("composing-active");
+  
+  // 更新浮动卡片
+  if (currentSelectedIso && currentSelectedName) {
+    const year = getCurrentYear();
+    updateFloatingCardContent(currentSelectedIso, currentSelectedName, getSelectedSDGs(), year, sdgData);
+  }
+  
+  setTimeout(() => {
+    map.resize();
+    console.log("Composing mode ended - Sound disabled, Log saved");
+  }, 350);
+  
+  showMessage("Session ended. Log file downloaded.");
+}
+
 if (startComposeBtn) {
   startComposeBtn.addEventListener("click", () => {
-    composerArea.classList.remove("hidden");
-    mainArea.classList.add("composer-open");
-
-    if (currentSelectedIso && currentSelectedName) {
-      const year = getCurrentYear();
-      updateFloatingCardContent(currentSelectedIso, currentSelectedName, getSelectedSDGs(), year, sdgData);
+    if (!isComposingMode) {
+      // 未在创作模式 → 开始创作
+      startComposingMode();
+    } else if (composerArea.classList.contains("hidden")) {
+      // 创作模式中但抽屉隐藏 → 重新显示抽屉
+      composerArea.classList.remove("hidden");
+      mainArea.classList.add("composer-open");
+      startComposeBtn.textContent = "⏹ End Compose";
+      
+      if (currentSelectedIso && currentSelectedName) {
+        const year = getCurrentYear();
+        updateFloatingCardContent(currentSelectedIso, currentSelectedName, getSelectedSDGs(), year, sdgData);
+      }
+      
+      setTimeout(() => {
+        map.resize();
+        console.log("Composer reopened");
+      }, 350);
+    } else {
+      // 创作模式中且抽屉可见 → 结束创作
+      endComposingMode();
     }
-
-    setTimeout(() => {
-      map.resize();
-      console.log(" 地图大小已调整 (Composer 打开)");
-    }, 350);
   });
 }
 
 if (closeComposeBtn) {
   closeComposeBtn.addEventListener("click", () => {
+    // 关闭按钮只隐藏 Composer 抽屉，不结束 session
     composerArea.classList.add("hidden");
     mainArea.classList.remove("composer-open");
 
@@ -940,6 +1119,12 @@ if (closeComposeBtn) {
       map.resize();
       console.log(" 地图大小已调整 (Composer 关闭)");
     }, 350);
+    
+    // 如果正在创作模式，更新按钮为 "Show Composer"
+    if (isComposingMode) {
+      startComposeBtn.textContent = "Show Composer";
+      showMessage("Session still recording. Click 'Show Composer' to continue.");
+    }
   });
 }
 
@@ -956,6 +1141,8 @@ console.log(" SDG Map Ready with Smart Position Management and Note Mapping!");
 initializeDragging();
 
 // ------------------- Play Melody 播放/停止功能 -------------------
+let playStartTime = null;
+
 document.getElementById("play-melody").addEventListener("click", () => {
   const playButton = document.getElementById("play-melody");
   
@@ -964,6 +1151,11 @@ document.getElementById("play-melody").addEventListener("click", () => {
     stopPlayback();
     playButton.textContent = "▶ Play";
     isPlaying = false;
+    
+    // Log: 停止播放
+    const duration = playStartTime ? Date.now() - playStartTime : 0;
+    logger.log('play_stop', { duration: duration });
+    playStartTime = null;
   } else {
     // 开始播放
     const noteGroups = document.querySelectorAll('.note-group');
@@ -972,6 +1164,12 @@ document.getElementById("play-melody").addEventListener("click", () => {
       showMessage("No notes to play!");
       return;
     }
+    
+    const tempo = parseInt(document.getElementById("tempo-input").value) || 86;
+    
+    // Log: 开始播放
+    logger.log('play_start', { tempo: tempo, noteCount: noteGroups.length });
+    playStartTime = Date.now();
     
     playButton.textContent = "⏹ Stop";
     isPlaying = true;
@@ -1068,6 +1266,9 @@ function removeHighlightNoteGroup(group) {
 
 // ------------------- Clear All -------------------
 document.getElementById("clear-all").addEventListener("click", () => {
+  // Log: 清空所有
+  logger.log('clear_all', {});
+
   // 先停止播放
   if (isPlaying) {
     stopPlayback();
@@ -1116,6 +1317,9 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
     showMessage("Need at least 2 notes to shuffle!");
     return;
   }
+
+  // Log: 随机打乱
+  logger.log('shuffle_notes', {});
 
   // 先停止播放
   if (isPlaying) {
@@ -1184,12 +1388,12 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
         const chord = document.createElement("div");
         chord.className = "chord";
 
-        // 🎵 先检查所有 SDG 是否都有值
+        // 先检查所有 SDG 是否都有值
         const allValues = noteData.sdgs.map(sdg => getSDGValue(sdgData, noteData.iso, year, sdg));
         const hasAnyValue = allValues.some(val => val !== null);
 
         if (!hasAnyValue) {
-          // 🎵 所有 SDG 都没有值 - 显示休止符
+          // 所有 SDG 都没有值 - 显示休止符
           const restSymbol = document.createElement("div");
           restSymbol.className = "rest-symbol";
           restSymbol.innerHTML = "𝄽"; // Unicode 休止符
@@ -1217,6 +1421,13 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
 
           notesData.sort((a, b) => a.value - b.value);
 
+          // 计算和弦的统一符杆方向
+          const lowValue = notesData[0].value;
+          const highValue = notesData[notesData.length - 1].value;
+          const distanceFromLow = 60 - lowValue;
+          const distanceFromHigh = highValue - 60;
+          const chordStemDown = distanceFromHigh >= distanceFromLow;
+
           const valueGroups = {};
           notesData.forEach(data => {
             const key = Math.floor(data.value / 10) * 10;
@@ -1225,7 +1436,7 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
           });
 
           notesData.forEach(data => {
-            const note = createQuarterNote(data.sdg, data.color, data.value);
+            const note = createQuarterNote(data.sdg, data.color, data.value, chordStemDown);
             const key = Math.floor(data.value / 10) * 10;
             const group = valueGroups[key];
             if (group.length > 1) {
@@ -1312,17 +1523,20 @@ if (tempoInput) {
     // 如果输入为空或无效,设为默认值
     if (isNaN(value) || tempoInput.value === '') {
       tempoInput.value = 86;
-      return;
+      value = 86;
     }
 
     // 限制在40-240之间
     if (value < 40) {
       tempoInput.value = 40;
-
+      value = 40;
     } else if (value > 240) {
       tempoInput.value = 240;
-
+      value = 240;
     }
+    
+    // Log: 速度变化
+    logger.log('tempo_change', { tempo: value });
   };
 
   tempoInput.addEventListener("blur", validateTempo);
@@ -1381,6 +1595,7 @@ if (modeToggleBtn) {
   modeToggleBtn.addEventListener("click", () => {
     // 获取当前调式
     const currentMode = modeToggleBtn.dataset.mode;
+    let newMode;
 
     if (currentMode === "major") {
       // 切换到小调
@@ -1388,13 +1603,18 @@ if (modeToggleBtn) {
       modeToggleBtn.dataset.mode = "minor";
       modeToggleBtn.textContent = "Minor Scale";
       showMessage("Switched to C Minor Scale");
+      newMode = "minor";
     } else {
       // 切换到大调
       setMode("major");
       modeToggleBtn.dataset.mode = "major";
       modeToggleBtn.textContent = "Major Scale";
       showMessage("Switched to C Major Scale");
+      newMode = "major";
     }
+
+    // Log: 调式切换
+    logger.log('mode_switch', { mode: newMode });
 
     // 刷新五线谱上的所有音符
     refreshAllNotes();
@@ -1479,6 +1699,13 @@ function refreshAllNotes() {
 
         notesData.sort((a, b) => a.value - b.value);
 
+        // 计算和弦的统一符杆方向
+        const lowValue = notesData[0].value;
+        const highValue = notesData[notesData.length - 1].value;
+        const distanceFromLow = 60 - lowValue;
+        const distanceFromHigh = highValue - 60;
+        const chordStemDown = distanceFromHigh >= distanceFromLow;
+
         const valueGroups = {};
         notesData.forEach(data => {
           const key = Math.floor(data.value / 10) * 10;
@@ -1487,7 +1714,7 @@ function refreshAllNotes() {
         });
 
         notesData.forEach(data => {
-          const note = createQuarterNote(data.sdg, data.color, data.value);
+          const note = createQuarterNote(data.sdg, data.color, data.value, chordStemDown);
           const key = Math.floor(data.value / 10) * 10;
           const group = valueGroups[key];
           if (group.length > 1) {
@@ -1634,6 +1861,9 @@ function swapPositions(pos1, pos2) {
     return;
   }
   
+  // Log: 拖拽音符
+  logger.log('note_drag', { fromPosition: pos1, toPosition: pos2 });
+  
   // 保存 notePositions 数据的引用
   const noteData1 = notePositions.find(n => n.position === pos1);
   const noteData2 = notePositions.find(n => n.position === pos2);
@@ -1738,6 +1968,9 @@ document.getElementById("save-composition").addEventListener("click", async () =
     showMessage("No notes to save! Add some notes first.");
     return;
   }
+
+  // Log: 保存音频
+  logger.log('save_audio', {});
 
   const saveBtn = document.getElementById("save-composition");
   
