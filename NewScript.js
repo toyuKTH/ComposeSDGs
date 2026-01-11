@@ -3,7 +3,7 @@
 // ------------------- 导入 -------------------
 import { setupYearControl, getCurrentYear } from './yearControl.js';
 import { sdgColors, sdgNames, getSDGIndicator, formatIndicatorHTML, formatIndicatorText } from './sdgfile.js';
-import { valueToNote, playValueNote, playValueChord, setMode, getMode } from './notemapping.js';
+import { valueToNote, playValueNote, playValueChord, setMode, getMode, noteNameToMidi, valueToMidi } from './notemapping.js';
 import { logger } from './logger.js';
 
 setupYearControl(); // 初始化年份控制
@@ -681,8 +681,10 @@ function createQuarterNote(sdg, color, value, forceStemDown = null) {
   noteDiv.appendChild(noteHead);
   noteDiv.appendChild(noteStem);
 
-  // 设置提示信息
-  noteDiv.title = `SDG ${sdg}- Value:${value} (${noteInfo.fullNoteName})`;
+  // 设置提示信息（value保留两位小数，添加年份）
+  const year = getCurrentYear();
+  const formattedValue = typeof value === 'number' ? value.toFixed(2) : value;
+  noteDiv.title = `SDG ${sdg} - Value: ${formattedValue} (${noteInfo.fullNoteName}) - Year: ${year}`;
 
   return noteDiv;
 }
@@ -1981,10 +1983,59 @@ document.getElementById("save-composition").addEventListener("click", async () =
     
     const tempo = parseInt(document.getElementById("tempo-input").value) || 86;
     const beatDuration = 60 / tempo;
+    const beatDurationMs = beatDuration * 1000; // 毫秒
     const year = getCurrentYear();
+    const currentMode = getMode();
     
     const totalDuration = (notePositions.length * beatDuration) + 1;
+    const sortedNotes = [...notePositions].sort((a, b) => a.position - b.position);
     
+    // ========== 构建 MIDI 信息 ==========
+    const midiData = {
+      metadata: {
+        title: "SDG Composition",
+        exportTime: new Date().toISOString(),
+        year: year,
+        tempo: tempo,
+        beatDurationSec: beatDuration,
+        mode: currentMode,
+        totalNotes: sortedNotes.length,
+        totalDurationSec: totalDuration
+      },
+      notes: []
+    };
+    
+    // 收集所有音符的MIDI信息
+    sortedNotes.forEach((noteData, index) => {
+      const startTimeSec = index * beatDuration;
+      const startTimeMs = index * beatDurationMs;
+      
+      noteData.sdgs.forEach(sdg => {
+        const value = getSDGValue(sdgData, noteData.iso, year, sdg);
+        if (value !== null) {
+          const noteInfo = valueToNote(value);
+          const midiPitch = noteNameToMidi(noteInfo.fullNoteName);
+          
+          midiData.notes.push({
+            position: index + 1,
+            startTimeSec: parseFloat(startTimeSec.toFixed(3)),
+            startTimeMs: Math.round(startTimeMs),
+            durationSec: parseFloat(beatDuration.toFixed(3)),
+            durationMs: Math.round(beatDurationMs),
+            country: noteData.country,
+            iso: noteData.iso,
+            sdg: parseInt(sdg),
+            sdgValue: parseFloat(value.toFixed(2)),
+            noteName: noteInfo.fullNoteName,
+            midiPitch: midiPitch,
+            frequency: noteInfo.frequency,
+            octave: noteInfo.octave
+          });
+        }
+      });
+    });
+    
+    // ========== 录制 WAV ==========
     const buffer = await Tone.Offline(async ({ transport }) => {
       const offlineSamplers = {};
       for (let i = 1; i <= 17; i++) {
@@ -1995,8 +2046,6 @@ document.getElementById("save-composition").addEventListener("click", async () =
       }
       
       await Tone.loaded();
-      
-      const sortedNotes = [...notePositions].sort((a, b) => a.position - b.position);
       
       sortedNotes.forEach((noteData, index) => {
         const startTime = index * beatDuration;
@@ -2021,24 +2070,36 @@ document.getElementById("save-composition").addEventListener("click", async () =
       transport.start();
     }, totalDuration);
     
-    const wav = audioBufferToWav(buffer);
-    const blob = new Blob([wav], { type: 'audio/wav' });
-    
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    
+    // 生成统一的时间戳用于两个文件
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-    link.download = `sdg-composition-${timestamp}.wav`;
     
-    link.href = url;
-    document.body.appendChild(link);
-    link.click();
+    // ========== 下载 WAV 文件 ==========
+    const wav = audioBufferToWav(buffer);
+    const wavBlob = new Blob([wav], { type: 'audio/wav' });
+    const wavUrl = URL.createObjectURL(wavBlob);
+    const wavLink = document.createElement('a');
+    wavLink.download = `sdg-composition-${timestamp}.wav`;
+    wavLink.href = wavUrl;
+    document.body.appendChild(wavLink);
+    wavLink.click();
+    document.body.removeChild(wavLink);
+    URL.revokeObjectURL(wavUrl);
     
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // ========== 下载 MIDI JSON 文件 ==========
+    const midiJson = JSON.stringify(midiData, null, 2);
+    const midiBlob = new Blob([midiJson], { type: 'application/json' });
+    const midiUrl = URL.createObjectURL(midiBlob);
+    const midiLink = document.createElement('a');
+    midiLink.download = `sdg-composition-${timestamp}-midi.json`;
+    midiLink.href = midiUrl;
+    document.body.appendChild(midiLink);
+    midiLink.click();
+    document.body.removeChild(midiLink);
+    URL.revokeObjectURL(midiUrl);
     
-    showMessage(" Audio saved as WAV!");
-    console.log(" 音频已保存为 WAV 格式");
+    showMessage(" Saved WAV + MIDI info!");
+    console.log(" 已保存 WAV 音频和 MIDI 信息 JSON");
+    console.log(" MIDI Data:", midiData);
     
   } catch (error) {
     console.error("录制失败:", error);

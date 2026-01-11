@@ -268,3 +268,58 @@ export function getAllTimbres() {
 export function hasTimbre(sdg) {
   return TIMBRE_NAMES.hasOwnProperty(sdg);
 }
+
+// ========== MIDI 音高转换 ==========
+
+/**
+ * 音符名到MIDI音高的映射
+ * MIDI标准：C4 = 60 (中央C)
+ */
+const NOTE_TO_MIDI_BASE = {
+  'C': 0, 'C#': 1, 'Db': 1,
+  'D': 2, 'D#': 3, 'Eb': 3,
+  'E': 4, 'Fb': 4,
+  'F': 5, 'F#': 6, 'Gb': 6,
+  'G': 7, 'G#': 8, 'Ab': 8,
+  'A': 9, 'A#': 10, 'Bb': 10,
+  'B': 11, 'Cb': 11
+};
+
+/**
+ * 将音符名（如 "C4", "Eb5"）转换为 MIDI 音高值
+ * @param {string} noteName - 音符名，如 "C4", "D#5", "Bb4"
+ * @returns {number} - MIDI 音高值 (0-127)
+ */
+export function noteNameToMidi(noteName) {
+  // 解析音符名和八度
+  const match = noteName.match(/^([A-Ga-g][#b]?)(\d+)$/);
+  if (!match) {
+    console.warn(`Invalid note name: ${noteName}`);
+    return null;
+  }
+  
+  const note = match[1].charAt(0).toUpperCase() + match[1].slice(1);
+  const octave = parseInt(match[2]);
+  
+  const noteBase = NOTE_TO_MIDI_BASE[note];
+  if (noteBase === undefined) {
+    console.warn(`Unknown note: ${note}`);
+    return null;
+  }
+  
+  // MIDI公式：C4 = 60, 所以 MIDI = 12 * (octave + 1) + noteBase
+  const midiNumber = 12 * (octave + 1) + noteBase;
+  
+  return midiNumber;
+}
+
+/**
+ * 将SDG值直接转换为MIDI音高
+ * @param {number} value - SDG分数 (0-100)
+ * @param {string} mode - 调式 ('major' 或 'minor')
+ * @returns {number} - MIDI 音高值
+ */
+export function valueToMidi(value, mode = null) {
+  const noteInfo = valueToNote(value, mode);
+  return noteNameToMidi(noteInfo.fullNoteName);
+}
