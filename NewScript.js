@@ -849,12 +849,13 @@ function addNoteToStaff(countryName, sdgList, iso) {
   // 启用拖拽
   enableDragging(noteGroup);
 
-  // Log: 添加音符
+  // Log: 添加音符（包含年份）
   const values = sdgList.map(sdg => getSDGValue(sdgData, iso, year, sdg)).filter(v => v !== null);
   logger.log('note_add', { 
     country: countryName, 
     iso: iso, 
     position: nextPos, 
+    year: year,
     sdgs: sdgList,
     values: values
   });
@@ -866,9 +867,23 @@ function addNoteToStaff(countryName, sdgList, iso) {
 function removeNoteFromStaff(noteGroup) {
   const position = parseInt(noteGroup.dataset.position);
   const country = noteGroup.dataset.country;
+  const iso = noteGroup.dataset.iso;
+  const year = getCurrentYear();
+  
+  // 获取被删除音符的完整信息（在从数组移除之前）
+  const noteData = notePositions.find(n => n.position === position);
+  const sdgs = noteData ? noteData.sdgs : [];
+  const values = sdgs.map(sdg => getSDGValue(sdgData, iso, year, sdg)).filter(v => v !== null);
 
-  // Log: 删除音符
-  logger.log('note_delete', { country: country, position: position });
+  // Log: 删除音符（包含完整信息）
+  logger.log('note_delete', { 
+    country: country, 
+    iso: iso,
+    position: position,
+    year: year,
+    sdgs: sdgs,
+    values: values
+  });
 
   // 创建新的占位符
   const placeholder = document.createElement("div");
@@ -1268,8 +1283,8 @@ function removeHighlightNoteGroup(group) {
 
 // ------------------- Clear All -------------------
 document.getElementById("clear-all").addEventListener("click", () => {
-  // Log: 清空所有
-  logger.log('clear_all', {});
+  // Log: 清空所有（记录清空前的音符数量）
+  logger.log('clear_all', { noteCountBefore: notePositions.length });
 
   // 先停止播放
   if (isPlaying) {
@@ -1320,8 +1335,8 @@ document.getElementById("shuffle-notes").addEventListener("click", () => {
     return;
   }
 
-  // Log: 随机打乱
-  logger.log('shuffle_notes', {});
+  // Log: 随机打乱（记录音符数量）
+  logger.log('shuffle_notes', { noteCount: noteGroups.length });
 
   // 先停止播放
   if (isPlaying) {
@@ -1863,8 +1878,17 @@ function swapPositions(pos1, pos2) {
     return;
   }
   
-  // Log: 拖拽音符
-  logger.log('note_drag', { fromPosition: pos1, toPosition: pos2 });
+  // Log: 拖拽音符（包含更多上下文）
+  const draggedNoteData = notePositions.find(n => n.position === pos1);
+  const targetNoteData = notePositions.find(n => n.position === pos2);
+  logger.log('note_drag', { 
+    fromPosition: pos1, 
+    toPosition: pos2,
+    draggedCountry: draggedNoteData ? draggedNoteData.country : null,
+    draggedIso: draggedNoteData ? draggedNoteData.iso : null,
+    targetCountry: targetNoteData ? targetNoteData.country : null,
+    targetIso: targetNoteData ? targetNoteData.iso : null
+  });
   
   // 保存 notePositions 数据的引用
   const noteData1 = notePositions.find(n => n.position === pos1);
@@ -1971,8 +1995,16 @@ document.getElementById("save-composition").addEventListener("click", async () =
     return;
   }
 
-  // Log: 保存音频
-  logger.log('save_audio', {});
+  // Log: 保存音频（包含创作信息）
+  const tempo = parseInt(document.getElementById("tempo-input").value) || 86;
+  const saveYear = getCurrentYear();
+  const saveMode = getMode();
+  logger.log('save_audio', { 
+    noteCount: notePositions.length,
+    tempo: tempo,
+    year: saveYear,
+    mode: saveMode
+  });
 
   const saveBtn = document.getElementById("save-composition");
   

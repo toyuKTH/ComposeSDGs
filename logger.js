@@ -105,8 +105,13 @@ class InteractionLogger {
       'values',
       'from_position',
       'to_position',
+      'dragged_country',
+      'dragged_iso',
+      'target_country',
+      'target_iso',
       'tempo',
       'note_count',
+      'note_count_before',
       'duration',
       'mode'
     ];
@@ -132,8 +137,13 @@ class InteractionLogger {
         data.values ? data.values.join(';') : '',
         data.fromPosition !== undefined ? data.fromPosition : '',
         data.toPosition !== undefined ? data.toPosition : '',
+        data.draggedCountry || '',
+        data.draggedIso || '',
+        data.targetCountry || '',
+        data.targetIso || '',
         data.tempo || '',
         data.noteCount !== undefined ? data.noteCount : '',
+        data.noteCountBefore !== undefined ? data.noteCountBefore : '',
         data.duration !== undefined ? data.duration : '',
         data.mode || ''
       ];
